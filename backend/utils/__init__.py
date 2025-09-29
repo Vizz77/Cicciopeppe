@@ -1,4 +1,3 @@
-from passlib.context import CryptContext
 from typing import Tuple, List, Any
 import time
 import ast
@@ -17,16 +16,26 @@ from pydantic import ValidationError
 from socketio import AsyncServer
 from exploitfarm.models.response import MessageResponse, ResponseStatus
 from exploitfarm.utils import json_like
+import secrets
+import hashlib
 
 #logging.getLogger().setLevel(logging.DEBUG)
 logging.basicConfig(format="[EXPLOIT-FARM][%(asctime)s] >> [%(levelname)s][%(name)s]:\t%(message)s", datefmt="%d/%m/%Y %H:%M:%S")
-crypto = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALLOWED_ANNOTATIONS = ["int", "str", "bool", "float", "any"]
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ROUTERS_DIR_NAME = "routes"
 ROUTERS_DIR = os.path.join(ROOT_DIR, ROUTERS_DIR_NAME)
 STATS_FILE = os.path.join(DATA_DIR, "stats.json")
+
+def hash_psw(psw: str):
+    salt = secrets.token_hex(32)
+    return hashlib.pbkdf2_hmac("sha256", psw.encode(), salt.encode(), 500_000).hex()+"-"+salt
+
+def verify_psw(psw: str, hashed: str) -> bool:
+    psw_hash, salt = hashed.split("-")
+    new_hashed = hashlib.pbkdf2_hmac("sha256", psw.encode(), salt.encode(), 500_000).hex()
+    return new_hashed == psw_hash
 
 def extract_function(fun_name:str, code: bytes) -> ast.FunctionDef|None:
     try:

@@ -27,7 +27,7 @@ from utils.query import get_messages_array
 from exploitfarm.models.response import MessageResponse, MessageResponseInvalidError, ResponseStatus
 from typing import Any
 from models.config import Configuration, SetupStatus, StatusAPI
-from utils import json_like, crypto
+from utils import json_like, hash_psw, verify_psw
 from utils.auth import login_validation, AuthStatus
 from workers import run_workers, terminate_workers
 from sqlalchemy.exc import IntegrityError
@@ -181,7 +181,7 @@ async def login_api(form: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(400,"Cannot insert an empty value!")
     await asyncio.sleep(0.3) # No bruteforce :)
     config = await Configuration.get_from_db()
-    if not crypto.verify(form.password, config.PASSWORD_HASH):
+    if not verify_psw(form.password, config.PASSWORD_HASH):
         raise HTTPException(406,"Wrong password!")
     return {"access_token": await create_access_token({"authenticated":True}), "token_type": "bearer"}
 
@@ -242,7 +242,7 @@ async def set_status(data: Dict[str, Any], db: DBSession):
         if key == "PASSWORD_HASH" and data[key] is not None:
             if len(str(data[key])) < 8:
                 raise HTTPException(400, "Password too short (at least 8 chars)")
-            data[key] = crypto.hash(data[key])
+            data[key] = hash_psw(data[key])
             change_secret = True
     config = Configuration.model_validate(config.model_dump() | data)
     await config.write_on_db()
@@ -283,7 +283,7 @@ if __name__ == '__main__':
     run_workers()
     uvicorn.run(
         "app:app",
-        host="0.0.0.0",
+        host="",
         port=5050,
         reload=DEBUG,
         access_log=True,
