@@ -9,7 +9,7 @@ python-multipart==0.0.19
 sqlalchemy[asyncio]==2.0.36
 sqlmodel==0.0.22
 redis>=6
-python-socketio==5.11.4
+python-socketio==5.14.1
 fastapi-pagination
 fastapi[all]
 uvicorn[standard]
