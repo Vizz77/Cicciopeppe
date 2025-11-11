@@ -5,7 +5,13 @@ import traceback
 import logging
 from env import DEBUG
 from multiprocessing import Process
-from db import close_db, redis_conn, REDIS_CHANNEL_PUBLISH_LIST, connect_db, redis_channels
+from db import (
+    close_db,
+    redis_conn,
+    REDIS_CHANNEL_PUBLISH_LIST,
+    connect_db,
+    redis_channels,
+)
 from utils.auth import login_validation, AuthStatus
 from socketio.exceptions import ConnectionRefusedError
 from exploitfarm.models.groups import JoinRequest
@@ -15,21 +21,25 @@ from utils import register_event
 import time
 from utils.redis_pipe import redis_call
 
+
 class StopLoop(Exception):
     pass
+
 
 redis_mgr = socketio.AsyncRedisManager(
     url="redis://localhost:6379/0" if DEBUG else "redis://redis:6379/0",
 )
 sio_server = socketio.AsyncServer(
-    async_mode='asgi',
+    async_mode="asgi",
     cors_allowed_origins=[],
     client_manager=redis_mgr,
     transports=["websocket"],
 )
 
+
 class g:
     task_list = []
+
 
 async def check_login(token: str) -> None:
     status = await login_validation(token)
@@ -39,10 +49,12 @@ async def check_login(token: str) -> None:
         raise ConnectionRefusedError("Authentication required")
     raise ConnectionRefusedError("Unauthorized")
 
+
 @sio_server.on("connect")
 async def sio_connect(sid, environ, auth):
     await check_login(auth.get("token"))
     await redis_conn.sadd("sid_list", sid)
+
 
 @sio_server.on("disconnect")
 async def sio_disconnect(sid):
@@ -55,13 +67,18 @@ async def sio_disconnect(sid):
     if group and client:
         await redis_call(redis_conn, "leave-group", sid, group, client)
 
+
 @register_event(sio_server, "event-group", GroupResponseEvent, MessageResponse)
 async def event_group(sid: str, response_req: GroupResponseEvent):
     return await redis_call(redis_conn, "event-group", sid, response_req)
-    
-@register_event(sio_server, "join-group", JoinRequest, MessageResponse[JoinRequestResponse])
+
+
+@register_event(
+    sio_server, "join-group", JoinRequest, MessageResponse[JoinRequestResponse]
+)
 async def join_group(sid, join_req: JoinRequest):
     return await redis_call(redis_conn, "join-group", sid, join_req)
+
 
 async def disconnect_all():
     while True:
@@ -73,23 +90,48 @@ async def disconnect_all():
                 sid = sid.decode()
             await sio_server.disconnect(sid)
 
+
+def decode_bytes_recursive(obj):
+    """Recursively decode bytes objects to strings for JSON serialization"""
+    if isinstance(obj, bytes):
+        return obj.decode("utf-8")
+    elif isinstance(obj, dict):
+        return {
+            decode_bytes_recursive(k): decode_bytes_recursive(v) for k, v in obj.items()
+        }
+    elif isinstance(obj, list):
+        return [decode_bytes_recursive(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(decode_bytes_recursive(item) for item in obj)
+    return obj
+
+
 async def generate_listener_tasks():
     for chann in REDIS_CHANNEL_PUBLISH_LIST:
+
         async def listener(chann=chann):
             await sio_server.emit(chann, "init")
             async with redis_conn.pubsub() as pubsub:
                 await pubsub.subscribe(chann)
                 while True:
-                    message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=None)
+                    message = await pubsub.get_message(
+                        ignore_subscribe_messages=True, timeout=None
+                    )
                     if message:
+                        # Decode all bytes to string for JSON serialization
+                        message = decode_bytes_recursive(message)
                         await sio_server.emit(chann, message)
+
         g.task_list.append(asyncio.create_task(listener()))
+
 
 async def password_change_listener():
     async with redis_conn.pubsub() as pubsub:
         await pubsub.subscribe(redis_channels.password_change)
         while True:
-            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=None)
+            message = await pubsub.get_message(
+                ignore_subscribe_messages=True, timeout=None
+            )
             if message:
                 await disconnect_all()
 
@@ -106,6 +148,7 @@ async def tasks_init():
     finally:
         await close_db()
 
+
 def inital_setup():
     try:
         while True:
@@ -119,6 +162,7 @@ def inital_setup():
                 time.sleep(10)
     except (KeyboardInterrupt, StopLoop):
         logging.info("SocketIO stopped by KeyboardInterrupt")
+
 
 def run_skio_daemon() -> Process:
     p = Process(target=inital_setup)
