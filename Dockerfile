@@ -15,7 +15,7 @@ RUN bun run build
 #Building main conteiner
 FROM --platform=$TARGETARCH python:3.13-slim AS base
 RUN pip install uv
-RUN apt-get update && apt-get install -y --no-install-recommends libcapstone-dev build-essential
+RUN apt-get update && apt-get install -y --no-install-recommends libcapstone-dev build-essential cmake pkg-config
 WORKDIR /execute
 ADD ./backend/requirements.txt /execute/requirements.txt
 RUN uv pip install --system --no-cache -r requirements.txt
