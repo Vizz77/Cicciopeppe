@@ -31,8 +31,8 @@ type FlagsRequestOptions = {
     reversed?: boolean
 }
 
-export const flagsRequest = async (page:number, pageSize: number, others:FlagsRequestOptions = {}) => {
-    return await getRequest("/flags",{
+export const flagsRequest = async (page: number, pageSize: number, others: FlagsRequestOptions = {}) => {
+    return await getRequest("/flags", {
         params: {
             page: page,
             size: pageSize,
@@ -41,7 +41,7 @@ export const flagsRequest = async (page:number, pageSize: number, others:FlagsRe
     }) as paths["/api/flags"]["get"]["responses"][200]["content"]["application/json"]
 }
 
-export const flagsQuery = (page:number, options:FlagsRequestOptions = {}) => {
+export const flagsQuery = (page: number, options: FlagsRequestOptions = {}) => {
     const [pageSizeRequest] = useSettingsStore((state) => [state.tablePageSize])
     return useQuery({
         queryKey: ["flags", options, pageSizeRequest, page],
@@ -53,43 +53,43 @@ export const deleteTeamList = async (teams: number[]) => {
     return await postRequest("/teams/delete", { body: teams }) as paths["/api/teams/delete"]["post"]["responses"][200]["content"]["application/json"]
 }
 
-export const editTeamList = async (teams: {[k:string]:any}) => {
+export const editTeamList = async (teams: { [k: string]: any }) => {
     return await putRequest("/teams", { body: teams }) as paths["/api/teams"]["put"]["responses"][200]["content"]["application/json"]
 }
 
-export const addTeamList = async (teams: {[k:string]:any}) => {
+export const addTeamList = async (teams: { [k: string]: any }) => {
     return await postRequest("/teams", { body: teams }) as paths["/api/teams"]["post"]["responses"][200]["content"]["application/json"]
 }
 
 export const deleteClient = async (clientId: string) => {
-    return await deleteRequest("/clients/"+clientId) as paths["/api/clients/{client_id}"]["delete"]["responses"][200]["content"]["application/json"]
+    return await deleteRequest("/clients/" + clientId) as paths["/api/clients/{client_id}"]["delete"]["responses"][200]["content"]["application/json"]
 }
 
-export const addService = async (values:{[k:string]:any}) => {
+export const addService = async (values: { [k: string]: any }) => {
     return await postRequest("/services", { body: values }) as paths["/api/services"]["post"]["responses"][200]["content"]["application/json"]
 }
 
-export const editService = async (serviceId: string, values:{[k:string]:any}) => {
-    return await putRequest("/services/"+serviceId, { body: values }) as paths["/api/services/{service_id}"]["put"]["responses"][200]["content"]["application/json"]
+export const editService = async (serviceId: string, values: { [k: string]: any }) => {
+    return await putRequest("/services/" + serviceId, { body: values }) as paths["/api/services/{service_id}"]["put"]["responses"][200]["content"]["application/json"]
 }
 
 export const deleteService = async (serviceId: string) => {
-    return await deleteRequest("/services/"+serviceId) as paths["/api/services/{service_id}"]["delete"]["responses"][200]["content"]["application/json"]
+    return await deleteRequest("/services/" + serviceId) as paths["/api/services/{service_id}"]["delete"]["responses"][200]["content"]["application/json"]
 }
 
-export const editClient = async (clientId: string, values:{[k:string]:any}) => {
-    return await putRequest("/clients/"+clientId, { body: values }) as paths["/api/clients/{client_id}"]["put"]["responses"][200]["content"]["application/json"]
+export const editClient = async (clientId: string, values: { [k: string]: any }) => {
+    return await putRequest("/clients/" + clientId, { body: values }) as paths["/api/clients/{client_id}"]["put"]["responses"][200]["content"]["application/json"]
 }
 
 export const deleteExploit = async (exploitId: string) => {
-    return await deleteRequest("/exploits/"+exploitId) as paths["/api/exploits/{exploit_id}"]["delete"]["responses"][200]["content"]["application/json"]
+    return await deleteRequest("/exploits/" + exploitId) as paths["/api/exploits/{exploit_id}"]["delete"]["responses"][200]["content"]["application/json"]
 }
 
-export const editExploit = async (exploitId: string, values:{[k:string]:any}) => {
-    return await putRequest("/exploits/"+exploitId, { body: values }) as paths["/api/exploits/{exploit_id}"]["put"]["responses"][200]["content"]["application/json"]
+export const editExploit = async (exploitId: string, values: { [k: string]: any }) => {
+    return await putRequest("/exploits/" + exploitId, { body: values }) as paths["/api/exploits/{exploit_id}"]["put"]["responses"][200]["content"]["application/json"]
 }
 
-export const attackRequest = async (page:number, pageSize: number, others:AttackRequestOptions = {}) => {
+export const attackRequest = async (page: number, pageSize: number, others: AttackRequestOptions = {}) => {
     return await getRequest("/flags/attacks", {
         params: {
             page: page,
@@ -99,7 +99,7 @@ export const attackRequest = async (page:number, pageSize: number, others:Attack
     }) as paths["/api/flags/attacks"]["get"]["responses"][200]["content"]["application/json"]
 }
 
-export const attacksQuery = (page:number, options:AttackRequestOptions = {}) => {
+export const attacksQuery = (page: number, options: AttackRequestOptions = {}) => {
     const [pageSizeRequest] = useSettingsStore((state) => [state.tablePageSize])
     return useQuery({
         queryKey: ["attacks", options, pageSizeRequest, page],
@@ -107,11 +107,20 @@ export const attacksQuery = (page:number, options:AttackRequestOptions = {}) => 
     })
 }
 
-export const setSetup = async (values:{[k:string]:any}) => {
+export const attackDetailQuery = (attackId: number, enabled: boolean = true) => {
+    return useQuery({
+        queryKey: ["attacks", "detail", attackId],
+        queryFn: async () => await attackRequest(1, 1, { id: attackId }),
+        enabled: enabled && attackId != null,
+        staleTime: 0,
+    })
+}
+
+export const setSetup = async (values: { [k: string]: any }) => {
     return await postRequest("/setup", { body: values }) as paths["/api/setup"]["post"]["responses"][200]["content"]["application/json"]
 }
 
-export const commitManualSubmission = async (flag_text:string) => {
+export const commitManualSubmission = async (flag_text: string) => {
     return await postRequest("/exploits/submit", {
         body: { output: flag_text }
     }) as paths["/api/exploits/submit"]["post"]["responses"][200]["content"]["application/json"]
@@ -131,7 +140,7 @@ export const deleteExploitSource = async (source_id: string) => {
     return await deleteRequest(`/exploits/source/${source_id}`) as paths["/api/exploits/source/{source_id}"]["delete"]["responses"][200]["content"]["application/json"]
 }
 
-export const editExploitSource = async (source_id: string, data:paths["/api/exploits/source/{source_id}"]["put"]["requestBody"]["content"]["application/json"]) => {
+export const editExploitSource = async (source_id: string, data: paths["/api/exploits/source/{source_id}"]["put"]["requestBody"]["content"]["application/json"]) => {
     return await putRequest(`/exploits/source/${source_id}`, { body: data }) as paths["/api/exploits/source/{source_id}"]["put"]["responses"][200]["content"]["application/json"]
 }
 
@@ -163,62 +172,62 @@ export const groupsQuery = () => useQuery({
     queryFn: async () => await getRequest("/groups") as paths["/api/groups"]["get"]["responses"][200]["content"]["application/json"]
 })
 
-export const editGroup = async (groupId: string, values:{[k:string]:any}) => {
-    return await putRequest("/groups/"+groupId, { body: values }) as paths["/api/groups/{group_id}"]["put"]["responses"][200]["content"]["application/json"]
+export const editGroup = async (groupId: string, values: { [k: string]: any }) => {
+    return await putRequest("/groups/" + groupId, { body: values }) as paths["/api/groups/{group_id}"]["put"]["responses"][200]["content"]["application/json"]
 }
 
 export const deleteGroup = async (groupId: string) => {
-    return await deleteRequest("/groups/"+groupId) as paths["/api/groups/{group_id}"]["delete"]["responses"][200]["content"]["application/json"]
+    return await deleteRequest("/groups/" + groupId) as paths["/api/groups/{group_id}"]["delete"]["responses"][200]["content"]["application/json"]
 }
 
 export const useServiceMapping = () => {
     const status = statusQuery()
     return useMemo(() => {
-        const services = status.data?.services?.map((service) => ({[service.id]: service}))
+        const services = status.data?.services?.map((service) => ({ [service.id]: service }))
         if (services == null || services.length == 0) return {}
-        return services.reduce((acc, val) => ({...acc, ...val}), {})
-    }, [status.isFetching])
+        return services.reduce((acc, val) => ({ ...acc, ...val }), {})
+    }, [status.data])
 }
 
 export const useTeamMapping = () => {
     const status = statusQuery()
     return useMemo(() => {
-        const teams = status.data?.teams?.map((team) => ({[team.id]: team}))
+        const teams = status.data?.teams?.map((team) => ({ [team.id]: team }))
         if (teams == null || teams.length == 0) return {}
-        return teams.reduce((acc, val) => ({...acc, ...val}), {})
-    }, [status.isFetching])
+        return teams.reduce((acc, val) => ({ ...acc, ...val }), {})
+    }, [status.data])
 }
 
 export const useExploitMapping = () => {
     const exploits = exploitsQuery()
     return useMemo(() => {
-        const exp = exploits.data?.map((exploit) => ({[exploit.id]: exploit}))
+        const exp = exploits.data?.map((exploit) => ({ [exploit.id]: exploit }))
         if (exp == null || exp.length == 0) return {}
-        return exp.reduce((acc, val) => ({...acc, ...val}), {})
-    }, [exploits.isFetching])
+        return exp.reduce((acc, val) => ({ ...acc, ...val }), {})
+    }, [exploits.data])
 }
 
 export const useClientMapping = () => {
     const clients = clientsQuery()
     return useMemo(() => {
-        const cl = clients.data?.map((client) => ({[client.id]: client}))
+        const cl = clients.data?.map((client) => ({ [client.id]: client }))
         if (cl == null || cl.length == 0) return {}
-        return cl.reduce((acc, val) => ({...acc, ...val}), {})
-    }, [clients.isFetching])
+        return cl.reduce((acc, val) => ({ ...acc, ...val }), {})
+    }, [clients.data])
 }
 
 export const useGroupMapping = () => {
     const groups = groupsQuery()
     return useMemo(() => {
-        const gr = groups.data?.map((group) => ({[group.id]: group}))
+        const gr = groups.data?.map((group) => ({ [group.id]: group }))
         if (gr == null || gr.length == 0) return {}
-        return gr.reduce((acc, val) => ({...acc, ...val}), {})
-    }, [groups.isFetching])
+        return gr.reduce((acc, val) => ({ ...acc, ...val }), {})
+    }, [groups.data])
 }
 
 export const useServiceSolver = () => {
     const services = useServiceMapping()
-    return (id?:string|null) => {
+    return (id?: string | null) => {
         if (id == null) return "Unknown"
         const service = services[id]
         if (service == null) return `Service ${id}`
@@ -229,7 +238,7 @@ export const useServiceSolver = () => {
 export const useServiceSolverByExploitId = () => {
     const services = useServiceMapping()
     const exploits = useExploitMapping()
-    return (id?:string|null) => {
+    return (id?: string | null) => {
         if (id == null) return "Unknown"
         const exploit = exploits[id]
         if (exploit == null) return `Exploit ${id}`
@@ -241,7 +250,7 @@ export const useServiceSolverByExploitId = () => {
 
 export const useTeamSolver = () => {
     const teams = useTeamMapping()
-    return (id?:number|null) => {
+    return (id?: number | null) => {
         if (id == null) return "Unknown"
         const team = teams[id]
         if (team == null) return `Team ${id}`
@@ -253,7 +262,7 @@ export const useTeamSolver = () => {
 
 export const useExploitSolver = () => {
     const exploits = useExploitMapping()
-    return (id?:string|null) => {
+    return (id?: string | null) => {
         if (id == null) return "Unknown"
         const exploit = exploits[id]
         if (exploit == null) return `Exploit ${id}`
@@ -263,7 +272,7 @@ export const useExploitSolver = () => {
 
 export const useClientSolver = () => {
     const clients = useClientMapping()
-    return (id?:string|null) => {
+    return (id?: string | null) => {
         if (id == null) return "Unknown"
         const client = clients[id]
         if (client == null) return `Client ${id}`
@@ -273,7 +282,7 @@ export const useClientSolver = () => {
 
 export const useGroupSolver = () => {
     const groups = useGroupMapping()
-    return (id?:string|null) => {
+    return (id?: string | null) => {
         if (id == null) return "Unknown"
         const group = groups[id]
         if (group == null) return `Group ${id}`
@@ -284,12 +293,12 @@ export const useGroupSolver = () => {
 export const useExtendedExploitSolver = () => {
     const exploits = useExploitMapping()
     const services = useServiceMapping()
-    return (id?:string|null) => {
+    return (id?: string | null) => {
         if (id == null) return "Unknown"
         const exploit = exploits[id]
         if (exploit == null) return `Exploit ${id}`
         return <span>
-            <b>{services[exploit.service]?.name??`Service ${exploit.service}`}</b> ({exploit.name})
+            <b>{services[exploit.service]?.name ?? `Service ${exploit.service}`}</b> ({exploit.name})
         </span>
     }
 }
@@ -298,18 +307,18 @@ export const checkSubmitterCode = async (code: string) => {
     return await postRequest("/submitters/check", { body: { code } }) as paths["/api/submitters/check"]["post"]["responses"][200]["content"]["application/json"]
 }
 
-export const editSubmitter = async (submitterId: number, values:{[k:string]:any}) => {
-    return await putRequest("/submitters/"+submitterId, { body: values }) as paths["/api/submitters/{submitter_id}"]["put"]["responses"][200]["content"]["application/json"]
+export const editSubmitter = async (submitterId: number, values: { [k: string]: any }) => {
+    return await putRequest("/submitters/" + submitterId, { body: values }) as paths["/api/submitters/{submitter_id}"]["put"]["responses"][200]["content"]["application/json"]
 }
 
-export const addSubmitter = async (values:{[k:string]:any}) => {
+export const addSubmitter = async (values: { [k: string]: any }) => {
     return await postRequest("/submitters", { body: values }) as paths["/api/submitters"]["post"]["responses"][200]["content"]["application/json"]
 }
 
 export const deleteSubmitter = async (submitterId: number) => {
-    return await deleteRequest("/submitters/"+submitterId) as paths["/api/submitters/{submitter_id}"]["delete"]["responses"][200]["content"]["application/json"]
+    return await deleteRequest("/submitters/" + submitterId) as paths["/api/submitters/{submitter_id}"]["delete"]["responses"][200]["content"]["application/json"]
 }
 
 export const testSubmitter = async (submitterId: number, data: string) => {
-    return await postRequest("/submitters/"+submitterId.toString()+"/test", { body: [data]}) as paths["/api/submitters/{submitter_id}/test"]["post"]["responses"][200]["content"]["application/json"]
+    return await postRequest("/submitters/" + submitterId.toString() + "/test", { body: [data] }) as paths["/api/submitters/{submitter_id}/test"]["post"]["responses"][200]["content"]["application/json"]
 }
