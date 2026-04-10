@@ -31,6 +31,7 @@ from utils import json_like, hash_psw, verify_psw
 from utils.auth import login_validation, AuthStatus
 from workers import run_workers, terminate_workers
 from sqlalchemy.exc import IntegrityError
+from utils import safe_join
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 os.makedirs(EXPLOIT_SOURCES_DIR, exist_ok=True)
@@ -258,7 +259,7 @@ if not DEBUG:
     async def catch_all(full_path:str):
         if full_path.startswith('api/'): 
             raise HTTPException(400, "Invalid API route")
-        file_request = os.path.join("frontend", full_path)
+        file_request = safe_join("frontend", full_path)
         if not os.path.isfile(file_request):
             return FileResponse("frontend/index.html", media_type='text/html')
         else:

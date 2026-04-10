@@ -18,6 +18,10 @@ from exploitfarm.models.response import MessageResponse, ResponseStatus
 from exploitfarm.utils import json_like
 import secrets
 import hashlib
+from pathlib import Path
+from typing import Union
+from fastapi import HTTPException, status
+
 
 #logging.getLogger().setLevel(logging.DEBUG)
 logging.basicConfig(format="[EXPLOIT-FARM][%(asctime)s] >> [%(levelname)s][%(name)s]:\t%(message)s", datefmt="%d/%m/%Y %H:%M:%S")
@@ -27,6 +31,31 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ROUTERS_DIR_NAME = "routes"
 ROUTERS_DIR = os.path.join(ROOT_DIR, ROUTERS_DIR_NAME)
 STATS_FILE = os.path.join(DATA_DIR, "stats.json")
+
+def safe_join(base_dir: Union[str, Path], *paths: str) -> Path:
+    """
+    Safely join a base directory with one or more path components.
+    
+    Returns the resolved Path object if safe.
+    Raises HTTPException 403 if a directory traversal attack is detected.
+    """
+    # 1. Convert base_dir to a resolved, absolute Path
+    base_path = Path(base_dir).resolve()
+    
+    # 2. Join the parts and resolve the result (removes symbols like '../')
+    # If the user input is an absolute path (starting with /), 
+    # joinpath handles it correctly or we can strip leading slashes.
+    clean_paths = [p.lstrip("/") for p in paths]
+    target_path = base_path.joinpath(*clean_paths).resolve()
+
+    # 3. Security check
+    if not target_path.is_relative_to(base_path):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Path is invalid."
+        )
+
+    return target_path
 
 def hash_psw(psw: str):
     salt = secrets.token_hex(32)
