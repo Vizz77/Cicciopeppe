@@ -72,13 +72,21 @@ async def sio_disconnect(sid):
 async def event_group(sid: str, response_req: GroupResponseEvent):
     return await redis_call(redis_conn, "event-group", sid, response_req)
 
-
 @register_event(
     sio_server, "join-group", JoinRequest, MessageResponse[JoinRequestResponse]
 )
 async def join_group(sid, join_req: JoinRequest):
     return await redis_call(redis_conn, "join-group", sid, join_req)
 
+@register_event(sio_server, "event-workers", GroupResponseEvent, MessageResponse)
+async def event_workers(sid: str, response_req: GroupResponseEvent):
+    return await redis_call(redis_conn, "event-workers", sid, response_req)
+
+@register_event(
+    sio_server, "join-workers", JoinRequest, MessageResponse[JoinRequestResponse]
+)
+async def join_workers(sid, join_req: JoinRequest):
+    return await redis_call(redis_conn, "join-workers", sid, join_req)
 
 async def disconnect_all():
     while True:
@@ -154,6 +162,15 @@ def inital_setup():
         while True:
             try:
                 g.task_list = []
+                # Always ensure a fresh redis_conn tied to the new loop
+                import db
+                import redis.asyncio as redis
+                from env import DEBUG
+                global redis_conn
+                # Reset the global connection in db.py to force a fresh connection pool and new locks
+                db.redis_conn = redis.Redis(host='localhost' if DEBUG else 'redis', port=6379)
+                redis_conn = db.redis_conn
+
                 with asyncio.Runner(loop_factory=uvloop.new_event_loop) as runner:
                     runner.run(tasks_init())
             except Exception as e:

@@ -47,6 +47,7 @@ class redis_channels:
     config = "config"
     password_change = "password_change"
     error_warning = "error_warning"
+    workers = "workers"
     
 REDIS_CHANNEL_PUBLISH_LIST = [
     redis_channels.client,
@@ -59,7 +60,8 @@ REDIS_CHANNEL_PUBLISH_LIST = [
     redis_channels.submitter,
     redis_channels.stats,
     redis_channels.config,
-    redis_channels.error_warning
+    redis_channels.error_warning,
+    redis_channels.workers
 ]
 
 class redis_keys:
@@ -83,6 +85,9 @@ class Client(SQLModel, table=True):
      
     id:                     ClientID                = Field(primary_key=True)
     name:                   str | None
+    os:                     str | None
+    arch:                   str | None
+    version:                str | None
     created_at:             DateTime                = Field(sa_column=datetime_now_sql())
     
     exploits_created:       List["Exploit"]         = Relationship(back_populates="created_by")
@@ -105,6 +110,7 @@ class Exploit(SQLModel, table=True):
     id:                 ExploitID               = Field(primary_key=True)
     name:               str
     language:           Language                = Field(default=Language.other)
+    run_on_workers: bool                        = Field(default=False)
     created_at:         DateTime                = Field(sa_column=datetime_now_sql())
     created_by_id:      ClientID | None         = Field(foreign_key="clients.id", ondelete="SET NULL")
     created_by:         Client | None           = Relationship(back_populates="exploits_created")
@@ -176,6 +182,7 @@ class AttackExecution(SQLModel, table=True):
     executed_by_id:         ClientID | None            = Field(foreign_key="clients.id", ondelete="SET NULL")
     executed_by:            Client | None              = Relationship(back_populates="attacks_executions")
     executed_by_group_id:   AttackGroupID | None       = Field(foreign_key="attack_groups.id", ondelete="SET NULL")
+    executed_by_workers:    bool                       = Field(default=False)
     executed_by_group:      AttackGroup | None         = Relationship(back_populates="executions")
     exploit_source_id:      ExploitSourceID | None     = Field(foreign_key="exploit_sources.id", ondelete="SET NULL")
     exploit_source:         ExploitSource | None       = Relationship(back_populates="executions")

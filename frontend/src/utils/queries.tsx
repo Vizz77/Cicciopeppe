@@ -3,7 +3,7 @@ import { deleteRequest, getLink, getRequest, postRequest, putRequest } from "@/u
 import { paths } from "./backend_types";
 import { useSettingsStore } from "./stores";
 import { useMemo } from "react";
-import { AttackStatuses, FlagStatuses, Stats } from "./types";
+import { AttackStatuses, FlagStatuses, Stats, WorkersGroupDTO } from "./types";
 
 export const statusQuery = () => useQuery({
     queryKey: ["status"],
@@ -171,6 +171,16 @@ export const groupsQuery = () => useQuery({
     queryKey: ["groups"],
     queryFn: async () => await getRequest("/groups") as paths["/api/groups"]["get"]["responses"][200]["content"]["application/json"]
 })
+
+export const workersPoolQuery = () => useQuery({
+    queryKey: ["workers"],
+    queryFn: async () => await getRequest("/groups/workers") as WorkersGroupDTO,
+    refetchInterval: 3000,
+})
+
+export const toggleWorkerExploit = async (exploitId: string, status: boolean) => {
+    return await putRequest(`/exploits/${exploitId}/workers`, { params: { status: status } })
+}
 
 export const editGroup = async (groupId: string, values: { [k: string]: any }) => {
     return await putRequest("/groups/" + groupId, { body: values }) as paths["/api/groups/{group_id}"]["put"]["responses"][200]["content"]["application/json"]

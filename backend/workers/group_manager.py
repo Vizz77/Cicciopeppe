@@ -581,6 +581,16 @@ def inital_setup():
         while True:
             try:
                 g.task_list = []
+                # Always ensure a fresh redis_conn tied to the new loop
+                import db
+                import redis.asyncio as redis
+                from env import DEBUG
+                global redis_conn, rpc_redis
+                # Reset the global connection in db.py to force a fresh connection pool and new locks
+                db.redis_conn = redis.Redis(host='localhost' if DEBUG else 'redis', port=6379)
+                redis_conn = db.redis_conn
+                rpc_redis.redis_conn = redis_conn
+
                 with asyncio.Runner(loop_factory=uvloop.new_event_loop) as runner:
                     runner.run(tasks_init())
             except Exception as e:

@@ -1,10 +1,12 @@
 from exploitfarm.models.groups import GroupDTO, AddGroupForm, EditGroupForm
+from exploitfarm.models.groups import WorkersGroupDTO
 from exploitfarm.models.response import MessageResponse
 from exploitfarm.models.enums import GroupStatus
+from exploitfarm.models.groups import WorkerClientInfoDTO
 from typing import List
 from fastapi import APIRouter, HTTPException
 from utils import json_like
-from db import DBSession, sqla
+from db import DBSession, Exploit, sqla
 from db import redis_channels, redis_conn, AttackGroupID
 from db import AttackGroup
 from typing import Tuple
@@ -32,6 +34,36 @@ async def group_get(db: DBSession):
             status=status
         )
     return await asyncio.gather(*[result(ele) for ele in groups])
+
+@router.get("/workers", response_model=WorkersGroupDTO)
+async def workers_pool_status(db: DBSession):
+    """Return live status of the workers pool (not a DB-backed group)."""
+    members_raw = await redis_conn.smembers(f"group:workers:members")
+    members = [m.decode() if isinstance(m, bytes) else m for m in members_raw]
+    exploits = (await db.execute(sqla.select(Exploit.id).where(Exploit.run_on_workers == True))).scalars().all()
+    timeout = await redis_conn.get("group:workers:timeout")
+    timeout = int(timeout) if timeout else None
+    worker_clients = []
+    if members:
+        for client_id in members:
+            # Safely fetch properties from redis directly
+            queue_size_raw = await redis_conn.get(f"group:workers:client:{client_id}:queue_size")
+            sid_raw = await redis_conn.get(f"group:workers:client:{client_id}:sid")
+            worker_clients.append(WorkerClientInfoDTO(
+                id=client_id,
+                sid=sid_raw.decode() if isinstance(sid_raw, bytes) else (sid_raw or ""),
+                queue_size=int(queue_size_raw) if queue_size_raw else 1,
+            ))
+            
+    return WorkersGroupDTO(
+        id = "workers",
+        name = "Workers",
+        members = members,
+        clients = worker_clients,
+        exploits= exploits,
+        timeout=timeout,
+        status=GroupStatus.active if len(members) > 0 else GroupStatus.inactive
+    )
 
 @router.post("", response_model=MessageResponse[GroupDTO])
 async def new_group(data: AddGroupForm, db: DBSession):

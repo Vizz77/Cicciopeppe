@@ -1,7 +1,7 @@
 import { Button } from "@mantine/core"
 import { forwardRef } from "react";
 import { CgOptions } from "react-icons/cg";
-import { FaCheck, FaEdit, FaTrash } from "react-icons/fa";
+import { FaCheck, FaEdit, FaNetworkWired, FaTrash } from "react-icons/fa";
 import { IoMdArrowRoundBack } from "react-icons/io"
 import { IoLogOut } from "react-icons/io5"
 import { MdAdd } from "react-icons/md";
@@ -35,6 +35,12 @@ export const OptionButton = forwardRef<HTMLButtonElement, {onClick?:()=>void, di
 export const EngineButton = forwardRef<HTMLButtonElement, {onClick?:()=>void, disabled?: boolean}>(({ onClick, disabled }, ref) => {
     return <Button ref={ref} color='yellow' size="compact-xs" radius={10} h={35} w={35} onClick={onClick} disabled={disabled}>
         <FaWrench size={20} />
+    </Button>
+})
+
+export const WorkersButton = forwardRef<HTMLButtonElement, {onClick?:()=>void, disabled?: boolean}>(({ onClick, disabled }, ref) => {
+    return <Button ref={ref} color='teal' size="compact-xs" radius={10} h={35} w={35} onClick={onClick} disabled={disabled}>
+        <FaNetworkWired size={20} />
     </Button>
 })
 

@@ -1,0 +1,6 @@
+uuid = "f396776e-dd32-4712-b61b-5c6cb90d5a02"
+name = "Test2-expl"
+interpreter = "python3"
+run = "main.py"
+language = "python"
+service = "86ab87f1-93cf-4f4b-9699-759c0160e01f"

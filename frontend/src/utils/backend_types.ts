@@ -184,6 +184,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exploits/{exploit_id}/workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Exploit Toggle Workers */
+        put: operations["exploit_toggle_workers_api_exploits__exploit_id__workers_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/exploits/{exploit_id}/submit": {
         parameters: {
             query?: never;
@@ -299,6 +316,42 @@ export interface paths {
         post?: never;
         /** Delete Exploit Source */
         delete: operations["delete_exploit_source_api_exploits_source__source_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exploits/{exploit_id}/store/key/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Exploit Key */
+        get: operations["get_exploit_key_api_exploits__exploit_id__store_key__key__get"];
+        /** Store Exploit Key */
+        put: operations["store_exploit_key_api_exploits__exploit_id__store_key__key__put"];
+        post?: never;
+        /** Delete Exploit Key */
+        delete: operations["delete_exploit_key_api_exploits__exploit_id__store_key__key__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exploits/{exploit_id}/store/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Exploit Keys */
+        get: operations["get_exploit_keys_api_exploits__exploit_id__store_keys_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -420,6 +473,26 @@ export interface paths {
         put?: never;
         /** New Group */
         post: operations["new_group_api_groups_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/groups/workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Workers Pool Status
+         * @description Return live status of the workers pool (not a DB-backed group).
+         */
+        get: operations["workers_pool_status_api_groups_workers_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -583,7 +656,10 @@ export interface components {
             grant_type?: string | null;
             /** Username */
             username: string;
-            /** Password */
+            /**
+             * Password
+             * Format: password
+             */
             password: string;
             /**
              * Scope
@@ -592,26 +668,26 @@ export interface components {
             scope: string;
             /** Client Id */
             client_id?: string | null;
-            /** Client Secret */
+            /**
+             * Client Secret
+             * Format: password
+             */
             client_secret?: string | null;
         };
         /** Body_new_exploit_source_api_exploits_source_post */
         Body_new_exploit_source_api_exploits_source_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
             /** Message */
-            message: string | null;
+            message?: string | null;
             /** Os Type */
-            os_type: string | null;
+            os_type?: string | null;
             /** Distro */
-            distro: string | null;
+            distro?: string | null;
             /** Arch */
-            arch: string | null;
+            arch?: string | null;
             /** Pushed By */
-            pushed_by: string | null;
+            pushed_by?: string | null;
         };
         /** ClientAddForm */
         ClientAddForm: {
@@ -619,6 +695,12 @@ export interface components {
             id: string;
             /** Name */
             name?: string | null;
+            /** Os */
+            os?: string | null;
+            /** Arch */
+            arch?: string | null;
+            /** Version */
+            version?: string | null;
         };
         /** ClientDTO */
         ClientDTO: {
@@ -626,6 +708,12 @@ export interface components {
             id: string;
             /** Name */
             name?: string | null;
+            /** Os */
+            os?: string | null;
+            /** Arch */
+            arch?: string | null;
+            /** Version */
+            version?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -636,6 +724,12 @@ export interface components {
         ClientEditForm: {
             /** Name */
             name?: string | null;
+            /** Os */
+            os?: string | null;
+            /** Arch */
+            arch?: string | null;
+            /** Version */
+            version?: string | null;
         };
         /** Configuration */
         Configuration: {
@@ -696,7 +790,7 @@ export interface components {
             /** Items */
             items: components["schemas"]["AttackExecutionDTO"][];
             /** Total */
-            total: number | null;
+            total: number;
             /** Page */
             page: number | null;
             /** Size */
@@ -709,7 +803,7 @@ export interface components {
             /** Items */
             items: components["schemas"]["FlagDTO"][];
             /** Total */
-            total: number | null;
+            total: number;
             /** Page */
             page: number | null;
             /** Size */
@@ -734,6 +828,11 @@ export interface components {
             /** @default other */
             language: components["schemas"]["Language"];
             /**
+             * Run On Workers
+             * @default false
+             */
+            run_on_workers: boolean;
+            /**
              * Service
              * Format: uuid
              */
@@ -752,6 +851,11 @@ export interface components {
             name: string;
             language: components["schemas"]["Language"];
             status?: components["schemas"]["ExploitStatus"] | null;
+            /**
+             * Run On Workers
+             * @default false
+             */
+            run_on_workers: boolean;
             /** Last Update */
             last_update?: string | null;
             /**
@@ -769,7 +873,7 @@ export interface components {
             /** Last Execution By */
             last_execution_by?: string | null;
             /** Last Execution Group By */
-            last_execution_group_by?: string | null;
+            last_execution_group_by?: string | "workers" | null;
             /** Last Source */
             last_source?: string | null;
         };
@@ -778,6 +882,8 @@ export interface components {
             /** Name */
             name?: string | null;
             language?: components["schemas"]["Language"] | null;
+            /** Run On Workers */
+            run_on_workers?: boolean | null;
             /** Service */
             service?: string | null;
         };
@@ -837,7 +943,7 @@ export interface components {
             /** Target */
             target?: number | null;
             /** Executed By Group */
-            executed_by_group?: string | null;
+            executed_by_group?: string | "workers" | null;
             /** Flags */
             flags: string[];
         };
@@ -903,7 +1009,9 @@ export interface components {
              * Globals
              * @default {}
              */
-            globals: Record<string, never>;
+            globals: {
+                [key: string]: unknown;
+            };
         };
         /**
          * FlagStatus
@@ -912,11 +1020,8 @@ export interface components {
         FlagStatus: "ok" | "wait" | "timeout" | "invalid";
         /** GroupDTO */
         GroupDTO: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
+            /** Id */
+            id: string | "workers";
             /** Name */
             name: string;
             /**
@@ -981,7 +1086,7 @@ export interface components {
             /** Message */
             message?: string | null;
             /** Response */
-            response?: unknown | null;
+            response?: unknown;
         };
         /** MessageResponse[ClientDTO] */
         MessageResponse_ClientDTO_: {
@@ -1006,7 +1111,9 @@ export interface components {
             /** Message */
             message?: string | null;
             /** Response */
-            response?: Record<string, never> | null;
+            response?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** MessageResponse[Dict[str, Dict[str, Any]]] */
         MessageResponse_Dict_str__Dict_str__Any___: {
@@ -1016,7 +1123,9 @@ export interface components {
             message?: string | null;
             /** Response */
             response?: {
-                [key: string]: Record<string, never>;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             } | null;
         };
         /** MessageResponse[Dict[str, int]] */
@@ -1063,6 +1172,15 @@ export interface components {
             message?: string | null;
             /** Response */
             response?: components["schemas"]["TeamEditForm"][] | null;
+        };
+        /** MessageResponse[List[str]] */
+        MessageResponse_List_str__: {
+            /** @default ok */
+            status: components["schemas"]["ResponseStatus"];
+            /** Message */
+            message?: string | null;
+            /** Response */
+            response?: string[] | null;
         };
         /** MessageResponse[ServiceDTO] */
         MessageResponse_ServiceDTO_: {
@@ -1194,7 +1312,9 @@ export interface components {
             /** Code */
             code: string;
             /** Kargs */
-            kargs?: Record<string, never> | null;
+            kargs?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** SubmitterDTO */
         SubmitterDTO: {
@@ -1209,7 +1329,9 @@ export interface components {
              * @default {}
              */
             kargs: {
-                [key: string]: Record<string, never>;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             };
             /**
              * Created At
@@ -1224,7 +1346,9 @@ export interface components {
             /** Name */
             name?: string | null;
             /** Kargs */
-            kargs?: Record<string, never> | null;
+            kargs?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** SubmitterInfoForm */
         SubmitterInfoForm: {
@@ -1285,27 +1409,75 @@ export interface components {
              * Globals
              * @default {}
              */
-            globals: Record<string, never>;
+            globals: {
+                [key: string]: unknown;
+            };
             /**
              * Exploits
              * @default {}
              */
-            exploits: Record<string, never>;
+            exploits: {
+                [key: string]: unknown;
+            };
             /**
              * Services
              * @default {}
              */
-            services: Record<string, never>;
+            services: {
+                [key: string]: unknown;
+            };
             /**
              * Teams
              * @default {}
              */
-            teams: Record<string, never>;
+            teams: {
+                [key: string]: unknown;
+            };
             /**
              * Clients
              * @default {}
              */
-            clients: Record<string, never>;
+            clients: {
+                [key: string]: unknown;
+            };
+        };
+        /** WorkerClientInfoDTO */
+        WorkerClientInfoDTO: {
+            /** Id */
+            id: string;
+            /** Sid */
+            sid: string;
+            /** Queue Size */
+            queue_size: number;
+        };
+        /** WorkersGroupDTO */
+        WorkersGroupDTO: {
+            /**
+             * Id
+             * @constant
+             */
+            id: "workers";
+            /**
+             * Name
+             * @default Workers
+             */
+            name: string;
+            /**
+             * Members
+             * @default []
+             */
+            members: string[];
+            /**
+             * Clients
+             * @default []
+             */
+            clients: components["schemas"]["WorkerClientInfoDTO"][];
+            /** Exploits */
+            exploits: string[];
+            /** Timeout */
+            timeout?: number | null;
+            /** @default inactive */
+            status: components["schemas"]["GroupStatus"];
         };
     };
     responses: never;
@@ -1326,7 +1498,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: string | number | null;
+                    [key: string]: unknown;
                 };
             };
         };
@@ -1803,6 +1975,39 @@ export interface operations {
             };
         };
     };
+    exploit_toggle_workers_api_exploits__exploit_id__workers_put: {
+        parameters: {
+            query: {
+                status: boolean;
+            };
+            header?: never;
+            path: {
+                exploit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse_ExploitDTO_"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse_Any_"];
+                };
+            };
+        };
+    };
     exploit_submit_api_exploits__exploit_id__submit_post: {
         parameters: {
             query?: never;
@@ -2048,6 +2253,138 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageResponse_UUID_"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse_Any_"];
+                };
+            };
+        };
+    };
+    get_exploit_key_api_exploits__exploit_id__store_key__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exploit_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse_Any_"];
+                };
+            };
+        };
+    };
+    store_exploit_key_api_exploits__exploit_id__store_key__key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exploit_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /** @example Binary data here */
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse_Any_"];
+                };
+            };
+        };
+    };
+    delete_exploit_key_api_exploits__exploit_id__store_key__key__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exploit_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse_Any_"];
+                };
+            };
+        };
+    };
+    get_exploit_keys_api_exploits__exploit_id__store_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exploit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse_List_str__"];
                 };
             };
             /** @description Validation error */
@@ -2392,6 +2729,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageResponse_GroupDTO_"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse_Any_"];
+                };
+            };
+        };
+    };
+    workers_pool_status_api_groups_workers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkersGroupDTO"];
                 };
             };
             /** @description Validation error */

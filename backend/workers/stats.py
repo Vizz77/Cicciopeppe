@@ -314,6 +314,13 @@ def inital_setup():
     try:
         while True:
             try:
+                import db
+                import redis.asyncio as redis
+                from env import DEBUG
+                global redis_conn
+                db.redis_conn = redis.Redis(host='localhost' if DEBUG else 'redis', port=6379)
+                redis_conn = db.redis_conn
+
                 with asyncio.Runner(loop_factory=uvloop.new_event_loop) as runner:
                     runner.run(tasks_init())
             except Exception as e:
