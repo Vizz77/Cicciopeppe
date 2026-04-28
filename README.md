@@ -201,7 +201,7 @@ All the docs you can find on [docs](docs) folder is writter for a university pro
 
 ---
 
-Made with ❤️ by Pwnzer0tt1
+Made with ❤️ by Cicciopeppe
 
 ---
 
