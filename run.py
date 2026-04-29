@@ -331,3 +331,11 @@ if __name__ == "__main__":
                 os.remove(g.composefile)
     except KeyboardInterrupt:
         print()
+
+
+"""
+TL:DR
+
+The code is freaking incredible , litterally this build automitically the whole farm up , dinamically.
+@navoos read it.
+"""
