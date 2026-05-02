@@ -27,3 +27,4 @@ tests/xploit_test/.flag_queue.json
 /backend/build
 exploitfarm-compose-tmp-file.yml
 exploitfarm-volumes.tar.gz
+venv

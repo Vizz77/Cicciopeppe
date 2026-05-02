@@ -332,3 +332,7 @@ export const deleteSubmitter = async (submitterId: number) => {
 export const testSubmitter = async (submitterId: number, data: string) => {
     return await postRequest("/submitters/" + submitterId.toString() + "/test", { body: [data] }) as paths["/api/submitters/{submitter_id}/test"]["post"]["responses"][200]["content"]["application/json"]
 }
+
+export const info = async () => {
+    return await getRequest("/info") // Here maybe there is also to use alias for making the thing more solid 
+}
