@@ -161,7 +161,7 @@ class AttackGroup(SQLModel, table=True):
     created_by:     Client | None               = Relationship(back_populates="created_groups")
     exploit_id:     ExploitID                   = Field(foreign_key="exploits.id", ondelete="CASCADE")
     exploit:        Exploit                     = Relationship(back_populates="groups")
-    commit_id:     ExploitSourceID | None      = Field(foreign_key="exploit_sources.id", ondelete="SET NULL")
+    commit_id:      ExploitSourceID | None      = Field(foreign_key="exploit_sources.id", ondelete="SET NULL")
     commit:         ExploitSource | None        = Relationship(back_populates="executed_by_group")
     
     executions:     List["AttackExecution"]     = Relationship(back_populates="executed_by_group")
@@ -173,7 +173,7 @@ class AttackExecution(SQLModel, table=True):
     start_time:             DateTime | None            = Field(sa_column=datetime_now_sql(now=False))
     end_time:               DateTime | None            = Field(sa_column=datetime_now_sql(now=False))
     status:                 AttackExecutionStatus      = Field(index=True)
-    output:                  bytes | None
+    output:                 bytes | None
     received_at:            DateTime                   = Field(sa_column=datetime_now_sql(index=True))
     target_id:              TeamID | None              = Field(foreign_key="teams.id", ondelete="SET NULL")
     target:                 Team | None                = Relationship(back_populates="attacks_executions")

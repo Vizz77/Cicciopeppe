@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import APIRouter, HTTPException
-from db import Service, AttackExecution , Exploit , DBSession, sqla, redis_conn, redis_channels, ServiceID
+from db import AttackGroup , Service, AttackExecution , Exploit , DBSession, sqla, redis_conn, redis_channels, ServiceID
 from exploitfarm.models.service import ServiceDTO, ServiceAddForm, ServiceEditForm
 from exploitfarm.models.response import MessageResponse
 from utils import json_like
@@ -32,3 +32,15 @@ async def build_return(db : DBSession):
     
     return info_block
 
+@router.post("client/{id}" , response_model = MessageResponse[ServiceDTO])
+async def client(db : DBSession , group_id : AttackGroup.id):
+    group_stats = (await db.scalars(
+        sqla.select(AttackGroup.name)
+        .join(AttackGroup.executions)
+        .where(group_id == AttackGroup.id)
+    )).one_or_none()
+
+    if not group_stats:
+        raise HTTPException(404, "Err querie exec")
+    
+    return group_stats
