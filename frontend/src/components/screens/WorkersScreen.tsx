@@ -173,18 +173,17 @@ export const WorkersScreen = () => {
                                     </Tabs.List>
 
                                     {/* Only show the button when the Exploits tab is active */}
-                                    {activeTab === "exploits" && (
-                                        <Button
-                                            variant="light"
-                                            size="xs"
-                                            mr="sm"
-                                            mb="sm"
-                                            onClick={() => setManageExploitsGroup(activeGroup)}
-                                            leftSection={<FaArchive size={12} />}
-                                        >
-                                            Manage Exploits
-                                        </Button>
-                                    )}
+                                    <Button
+                                        variant="light"
+                                        size="xs"
+                                        mr="sm"
+                                        mb="sm"
+                                        onClick={() => setManageExploitsGroup(activeGroup)}
+                                        leftSection={<FaArchive size={12} />}
+                                    >
+                                        Manage Exploits
+                                    </Button>
+
                                 </Group>
 
                                 <Tabs.Panel value="workers" style={{ flex: 1, overflow: "hidden", paddingTop: "10px" }}>
