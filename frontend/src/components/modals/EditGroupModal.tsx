@@ -7,13 +7,13 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 
 
-export const EditGroupModal = ({ onClose, group }:{ onClose: ()=>void, group?:AttackGroup }) => {
+export const EditGroupModal = ({ onClose, group }: { onClose: () => void, group?: AttackGroup }) => {
     const form = useForm({
         initialValues: {
-            name: group?.name??"",
+            name: group?.name ?? "",
         },
         validate: {
-            name: (value) => value == ""?"Name is required":undefined
+            name: (value) => value == "" ? "Name is required" : undefined
         }
     })
 
@@ -21,38 +21,38 @@ export const EditGroupModal = ({ onClose, group }:{ onClose: ()=>void, group?:At
 
     useEffect(() => {
         form.setInitialValues({
-            name: group?.name??""
+            name: group?.name ?? ""
         })
         form.reset()
     }, [group])
 
     return <Modal
-        opened={ group != null }
+        opened={group != null}
         onClose={onClose}
         title="Edit group"
         size="xl"
         centered
     >
         <form onSubmit={form.onSubmit((data) => {
-            if (group == null){
+            if (group == null) {
                 onClose()
                 return
             }
             editGroup(group.id, data)
-            .then(()=>{
-                notifications.show({
-                    title: `${group.name} Group edited!`,
-                    message: "Group has been edited successfully!",
-                    color: "green",
-                })
-                queryClient.invalidateQueries({ queryKey: ["groups"] })
-            }).catch((err) => {
-                notifications.show({
-                    title: "Error during editing!",
-                    message: err.message??err??"Unknown error",
-                    color: "red",
-                })
-            }).finally(()=>{ onClose() })
+                .then(() => {
+                    notifications.show({
+                        title: `${group.name} Group edited!`,
+                        message: "Group has been edited successfully!",
+                        color: "green",
+                    })
+                    queryClient.invalidateQueries({ queryKey: ["groups"] })
+                }).catch((err) => {
+                    notifications.show({
+                        title: "Error during editing!",
+                        message: err.message ?? err ?? "Unknown error",
+                        color: "red",
+                    })
+                }).finally(() => { onClose() })
         })}>
             <TextInput
                 label="Name"

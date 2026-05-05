@@ -12,7 +12,8 @@ from exploitfarm.models.enums import AttackMode
 from exploitfarm.models.groups import JoinRequest, GroupEventRequestType, GroupRequestEvent
 from exploitfarm.models.response import ResponseStatus
 from exploitfarm.models.groups import GroupResponseEvent, GroupEventResponseType
-from db import Team, AttackGroup, ExploitSource
+from db import Team, AttackGroup, ExploitSource, Exploit
+from sqlalchemy.orm import selectinload
 from utils import json_like, datetime_now
 import time
 from models.config import Configuration
@@ -83,6 +84,8 @@ class ClinetAttackerStatus:
 @dataclass
 class AttackTargetStatus:
     target: str
+    exploit_id: str
+    commit_id: str|None
     data: dict
     executed: bool = False
     assigned_to: str|None = None
@@ -125,32 +128,42 @@ class GroupAttackManager:
         self.timeout = 0
         self.deadline = datetime_now()
         self.tot_time_available = 0
-        self.exploit_source_id = self.group.commit_id
         self.task = asyncio.create_task(self.__task())
         
         self.last_timeout_sent = 0
         self.last_timeout_value_sent = 0
         
         self.client_table: dict[str, ClinetAttackerStatus] = {}
-        self.attack_target_table: dict[str, AttackTargetStatus] = {}
+        self.attack_target_table: dict[str, dict[str, AttackTargetStatus]] = {}
         self.client_table_lock = Lock()
         self.attack_target_table_lock = Lock()
-        self.source_pull_required = False
-        
-        self.__generate_attack_targets()
+        self.source_pull_required = set()
+        self.exploits_info = {}
         
         self.current_virtual_time = 0
     
-    @property
-    def latest_source_required(self) -> bool:
-        return self.group.commit_id == "latest"
+    async def generate_attack_targets(self, exploit_id: str = None):
+        if exploit_id is None:
+            for expl in self.group.exploits:
+                latest_source = await get_latest_exploit_source(expl.id)
+                self.exploits_info[str(expl.id)] = latest_source.hash if latest_source else None
+                if latest_source is not None:
+                    await self.generate_attack_targets(str(expl.id))
+                else:
+                    logging.warning(f"[GroupTask:{self.group_id}] Exploit {expl.id} has no pushed source, skipping.")
+            return
+            
+        async with self.attack_target_table_lock:
+            self.attack_target_table[exploit_id] = {}
+            for ele in g.teams:
+                self.attack_target_table[exploit_id][ele.host] = AttackTargetStatus(
+                    target=ele.host,
+                    exploit_id=exploit_id,
+                    commit_id=self.exploits_info.get(exploit_id),
+                    data=TeamDTO.model_dump(ele, mode="python", exclude_unset=False)
+                )
     
-    def __generate_attack_targets(self):
-        for ele in g.teams:
-            self.attack_target_table[ele.host] = AttackTargetStatus(
-                target=ele.host,
-                data=TeamDTO.model_dump(ele, mode="python", exclude_unset=False)
-            )
+
     
     def time_to_wait_for_next_timeout(self) -> int:
         return max(0, self.TIMEOUT_SEND_INTERVAL - (time.time() - self.last_timeout_sent))
@@ -161,13 +174,16 @@ class GroupAttackManager:
     async def timeout_update_handle(self):
         if self.time_to_wait_for_next_timeout() <= 0:
             if self.last_timeout_value_sent != self.timeout:
-                await sio_server.send(
-                    json_like(GroupRequestEvent(
-                        event=GroupEventRequestType.DYNAMIC_TIMEOUT,
-                        group_id=self.group_id,
-                        data={ "timeout": self.timeout }
-                    )),
-                    room=f"group:{self.group_id}:room"
+                await asyncio.gather(
+                    redis_conn.set(f"group:{self.group.id}:timeout", int(self.timeout)),
+                    sio_server.send(
+                        json_like(GroupRequestEvent(
+                            event=GroupEventRequestType.DYNAMIC_TIMEOUT,
+                            group_id=self.group_id,
+                            data={ "timeout": self.timeout }
+                            )),
+                            room=f"group:{self.group_id}:room"
+                        )
                 )
                 self.last_timeout_value_sent = self.timeout
             self.last_timeout_sent = time.time()       
@@ -211,33 +227,41 @@ class GroupAttackManager:
         except TimeoutError:
             return None
     
-    async def trigger_attack_start_no_lock(self, client_id: str, target: dict):
+    async def trigger_attack_start_no_lock(self, client_id: str, target: AttackTargetStatus):
         await sio_server.send(
             json_like(GroupRequestEvent(
                 event=GroupEventRequestType.ATTACK_REQUEST,
                 group_id=self.group_id,
-                data={ "target": target }
+                data={ 
+                    "target": target.data,
+                    "exploit_id": target.exploit_id,
+                    "commit_id": target.commit_id
+                }
             )),
             to=self.client_table[client_id].sid
         )
 
     async def trigger_exploit_pull(self):
+        if not self.source_pull_required:
+            return
         await sio_server.send(
             json_like(GroupRequestEvent(
                 event=GroupEventRequestType.EXPLOIT_PULL,
-                group_id=self.group_id
+                group_id=self.group_id,
+                data={ "exploit_ids": list(self.source_pull_required) }
             )),
             room=f"group:{self.group_id}:room"
         )
-        self.source_pull_required = False
+        self.source_pull_required.clear()
     
     async def recalculate_timeout(self, trigger_skio_update: bool = False, reset_virtual_time: bool = False):
         if reset_virtual_time:
             self.current_virtual_time = sum(ele.queue_size*self.tot_time_available for ele in self.client_table.values())
-        if len(g.teams) == 0:
+        tot_targets = len(g.teams) * len(self.group.exploits)
+        if tot_targets == 0:
             self.timeout = 0
         else:
-            self.timeout = max(min(math.ceil(self.current_virtual_time / len(g.teams)), g.configuration.TICK_DURATION), 0)
+            self.timeout = max(min(math.ceil(self.current_virtual_time / tot_targets), g.configuration.TICK_DURATION), 0)
         if trigger_skio_update:
             self.last_timeout_sent = 0
             await self.timeout_update_handle()
@@ -257,11 +281,12 @@ class GroupAttackManager:
                 if self.time_to_wait_for_next_loop() <= 0:
                     # Kill all eventually running attacks
                     await self.send_killall_request()
-                    if self.source_pull_required:
+                    if len(self.source_pull_required) > 0:
                         await self.trigger_exploit_pull()
                     # Reset all attack targets info
                     for ele in self.attack_target_table.values():
-                        ele.reset()
+                        for ele2 in ele.values():
+                            ele2.reset()
                     # Reset all client info
                     for ele in self.client_table.values():
                         ele.reset()
@@ -272,7 +297,11 @@ class GroupAttackManager:
                     # Recalculate timeout and send it to clients
                     await self.recalculate_timeout(trigger_skio_update=True, reset_virtual_time=True)
                 
-                teams_to_exec = [ele for ele in self.attack_target_table.values() if not ele.executed and ele.assigned_to is None]
+                teams_to_exec = []
+                for expl in self.attack_target_table.values():
+                    teams_to_exec.extend(
+                        [ele for ele in expl.values() if not ele.executed and ele.assigned_to is None]
+                    )
                 if len(teams_to_exec) == 0:
                     return
                 
@@ -282,7 +311,8 @@ class GroupAttackManager:
                 
                 if len(client_status) == 0:
                     if self.running:
-                        await set_exploit_stopped(self.group.exploit_id)
+                        for expl in self.group.exploits:
+                            await set_exploit_stopped(expl.id)
                         self.running = False
                     return # No client available, need someone to join
                 
@@ -295,11 +325,10 @@ class GroupAttackManager:
                         if prio < 1:
                             break # Will be eventually handled in the next assign phase
                         for _ in range(math.floor(prio)):
+                            if len(teams_to_exec) == 0: return
                             team_to_attack = teams_to_exec.pop()
                             client.assign(team_to_attack)
-                            await self.trigger_attack_start_no_lock(client.client_id, team_to_attack.data)
-                            if len(teams_to_exec) == 0:
-                                return
+                            await self.trigger_attack_start_no_lock(client.client_id, team_to_attack)
                     client_status = await self.calc_client_status()
                 
                 # 2nd assign phase: single attack assignment
@@ -309,7 +338,7 @@ class GroupAttackManager:
                             break # No more client available
                         team_to_attack = teams_to_exec.pop()
                         client.assign(team_to_attack)
-                        await self.trigger_attack_start_no_lock(client.client_id, team_to_attack.data)
+                        await self.trigger_attack_start_no_lock(client.client_id, team_to_attack)
                         if len(teams_to_exec) == 0:
                             return
                     client_status = await self.calc_client_status()
@@ -317,14 +346,16 @@ class GroupAttackManager:
                 # Can't assign all the attacks, waiting for attacks to end
     
     async def __task(self):
-        if self.latest_source_required:
-            latest_source = await get_latest_exploit_source(self.group.exploit_id)
-            self.exploit_source_id = latest_source.id
+        logging.info(f"[GroupTask:{self.group_id}] Task started. exploits={len(self.group.exploits)} running={self.running}")
+        await self.generate_attack_targets()
+        logging.info(f"[GroupTask:{self.group_id}] Attack targets generated: {list(self.attack_target_table.keys())}")
         while True:
             try:
                 if self.running:
                     await self.timeout_update_handle()
                     await self.attack_run_actions()
+                else:
+                    logging.debug(f"[GroupTask:{self.group_id}] Not running, waiting for trigger. clients={len(self.client_table)} exploits={len(self.group.exploits)}")
                 await self.wait_next_loop()
             except Exception as e:
                 logging.exception(f"Error in group task for group {self.group_id}: {e}")
@@ -338,30 +369,32 @@ class GroupAttackManager:
         match request.event:
             case GroupEventResponseType.SET_RUNNING_STATUS:
                 if not request.data["running"]:
-                    await set_exploit_stopped(self.group.exploit_id)
+                    for expl in self.group.exploits:
+                        await set_exploit_stopped(expl.id)
                 self.running = request.data["running"]
                 await self.send_running_status()
                 await self.loop_reset()
             case GroupEventResponseType.ATTACK_ENDED:
                 async with self.client_table_lock:
                     async with self.attack_target_table_lock:
-                        # Get the client and target
-                        target = self.attack_target_table[request.data["target"]]
-                        client = self.client_table[request.client]
-                        # End the attack
-                        client.end(target, request.data.get("n_flags", 0))
-                # Add the earned time to the virtual time
-                time_used = client.delta_from_start()
-                self.current_virtual_time += self.timeout - time_used.total_seconds()
-                # Recalculate timeout
-                await self.recalculate_timeout()
-                # Trigger new assignment
+                        key_exploit = request.data.get("exploit_id")
+                        key_target = request.data.get("target")
+                        if key_exploit in self.attack_target_table and key_target in self.attack_target_table[key_exploit] and request.client in self.client_table:
+                            target = self.attack_target_table[key_exploit][key_target]
+                            client = self.client_table[request.client]
+                            if target.assigned_to == request.client:
+                                client.end(target, request.data.get("n_flags", 0))
+                                
+                                time_used = client.delta_from_start()
+                                self.current_virtual_time += self.timeout - time_used.total_seconds()
+                                await self.recalculate_timeout()
                 self.trigger_next_loop()
     
     def delta_until_deadline(self) -> int:
         return self.deadline.timestamp() - time.time()
     
     async def handle_join(self, client_id: str, sid:str, queue_size: int):
+        logging.info(f"[GroupTask:{self.group_id}] handle_join: client={client_id} queue_size={queue_size} running={self.running} exploits={len(self.group.exploits)}")
         async with self.client_table_lock:
             self.client_table[client_id] = ClinetAttackerStatus(
                 client_id=client_id,
@@ -371,23 +404,45 @@ class GroupAttackManager:
         # Insert Join time to virtual time
         self.current_virtual_time += self.delta_until_deadline() * queue_size
         await self.recalculate_timeout(trigger_skio_update=True)
+        # Auto-start group when a worker joins and exploits are assigned
+        if not self.running and len(self.group.exploits) > 0:
+            logging.info(f"[GroupTask:{self.group_id}] Auto-starting group! exploits={[str(e.id) for e in self.group.exploits]}")
+            self.running = True
+            await self.send_running_status()
+            await self.loop_reset()
         self.trigger_next_loop()
         return self.timeout, self.deadline, self.running
     
+    async def __kill_and_reset_exploit(self, exploit_id: str):
+        # We don't have a specific kill exploit command in group right now but we can clear targets
+        async with self.attack_target_table_lock:
+            if exploit_id in self.attack_target_table:
+                for target in self.attack_target_table[exploit_id].values():
+                    if target.assigned_to and target.assigned_to in self.client_table:
+                        self.client_table[target.assigned_to].used_queues = max(0, self.client_table[target.assigned_to].used_queues - 1)
+                del self.attack_target_table[exploit_id]
+        await self.generate_attack_targets(exploit_id)
+
     async def handle_commit_change(self):
-        if self.latest_source_required:
-            latest_source = await get_latest_exploit_source(self.group.exploit_id)
-            if latest_source.id != self.exploit_source_id:
-                self.exploit_source_id = latest_source.id
-                self.source_pull_required = True
+        for expl in self.group.exploits:
+            exploit_id = str(expl.id)
+            latest_source = await get_latest_exploit_source(exploit_id)
+            new_hash = latest_source.hash if latest_source else None
+            if new_hash != self.exploits_info.get(exploit_id):
+                self.exploits_info[exploit_id] = new_hash
+                self.source_pull_required.add(exploit_id)
+                await self.__kill_and_reset_exploit(exploit_id)
+                await self.recalculate_timeout(trigger_skio_update=True)
+                self.trigger_next_loop()
     
     async def handle_leave(self, client_id: str):
         await disconnect_client(self.group_id, client_id)
         async with self.client_table_lock:
             self.current_virtual_time -= self.delta_until_deadline() * self.client_table[client_id].queue_size
-            for data in self.attack_target_table.values():
-                if not data.executed and data.assigned_to == client_id:
-                    data.reset()
+            for ele in self.attack_target_table.values():
+                for data in ele.values():
+                    if not data.executed and data.assigned_to == client_id:
+                        data.reset()
             del self.client_table[client_id]
         self.trigger_next_loop()
     
@@ -408,7 +463,7 @@ class GroupAttackManager:
     async def handle_teams_changed(self):
         async with self.attack_target_table_lock:
             self.attack_target_table = {}
-            self.__generate_attack_targets()
+            await self.generate_attack_targets()
         await self.loop_reset()
     
     async def cancel(self):
@@ -430,7 +485,7 @@ async def generate_group_task_no_lock(group_id: str) -> GroupAttackManager:
         group_id = group_id.decode()
     group_id = str(group_id)
     async with dbtransaction() as db:
-        stmt = sqla.select(AttackGroup).where(AttackGroup.id == uuid.UUID(group_id))
+        stmt = sqla.select(AttackGroup).where(AttackGroup.id == uuid.UUID(group_id)).options(selectinload(AttackGroup.exploits))
         group = await db.scalar(stmt)
         if group is None:
             raise ValueError("Not existing group id given")
@@ -447,6 +502,34 @@ async def group_changes_listener():
                 if message.startswith("delete:"):
                     group_id = message.split(":")[1]
                     await group_delete(group_id)
+                elif message.startswith("update:"):
+                    group_id = message.split(":")[1]
+                    async with g.attack_manager_lock:
+                        manager = g.group_attack_managers.get(group_id)
+                        if manager:
+                            # Reload group from DB to get updated exploits
+                            async with dbtransaction() as db:
+                                stmt = sqla.select(AttackGroup).where(
+                                    AttackGroup.id == uuid.UUID(group_id)
+                                ).options(selectinload(AttackGroup.exploits))
+                                group = await db.scalar(stmt)
+                                if group:
+                                    manager.group = group
+                                    await manager.handle_teams_changed()
+                                    # Auto-start if workers are connected and exploits are now assigned
+                                    if not manager.running and len(manager.group.exploits) > 0 and len(manager.client_table) > 0:
+                                        manager.running = True
+                                        await manager.send_running_status()
+                                        await manager.loop_reset()
+                elif message.startswith("add:"):
+                    group_id = message.split(":")[1]
+                    # Pre-create the manager so it's ready when workers join
+                    async with g.attack_manager_lock:
+                        if not g.group_attack_managers.get(group_id):
+                            try:
+                                await generate_group_task_no_lock(group_id)
+                            except Exception:
+                                pass
 
 async def update_config_info():
     g.configuration = await Configuration.get_from_db()
@@ -497,6 +580,7 @@ async def join_group(sid, join_req: JoinRequest):
     await asyncio.gather(
         redis_conn.mset({
             f"group:{join_req.group_id}:client:{join_req.client}:sid": sid,
+            f"group:{join_req.group_id}:client:{join_req.client}:queue_size": join_req.queue_size,
             f"sid:{sid}:group": str(join_req.group_id),
             f"sid:{sid}:client": join_req.client
         }),

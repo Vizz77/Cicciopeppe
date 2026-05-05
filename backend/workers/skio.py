@@ -78,16 +78,6 @@ async def event_group(sid: str, response_req: GroupResponseEvent):
 async def join_group(sid, join_req: JoinRequest):
     return await redis_call(redis_conn, "join-group", sid, join_req)
 
-@register_event(sio_server, "event-workers", GroupResponseEvent, MessageResponse)
-async def event_workers(sid: str, response_req: GroupResponseEvent):
-    return await redis_call(redis_conn, "event-workers", sid, response_req)
-
-@register_event(
-    sio_server, "join-workers", JoinRequest, MessageResponse[JoinRequestResponse]
-)
-async def join_workers(sid, join_req: JoinRequest):
-    return await redis_call(redis_conn, "join-workers", sid, join_req)
-
 async def disconnect_all():
     while True:
         sids = await redis_conn.spop("sid_list", count=100)

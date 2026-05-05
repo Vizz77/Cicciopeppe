@@ -38,7 +38,7 @@ export const EngineButton = forwardRef<HTMLButtonElement, {onClick?:()=>void, di
     </Button>
 })
 
-export const WorkersButton = forwardRef<HTMLButtonElement, {onClick?:()=>void, disabled?: boolean}>(({ onClick, disabled }, ref) => {
+export const GroupsButton = forwardRef<HTMLButtonElement, {onClick?:()=>void, disabled?: boolean}>(({ onClick, disabled }, ref) => {
     return <Button ref={ref} color='teal' size="compact-xs" radius={10} h={35} w={35} onClick={onClick} disabled={disabled}>
         <FaNetworkWired size={20} />
     </Button>

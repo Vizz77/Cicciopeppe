@@ -1,5 +1,5 @@
 import { Alert, AppShell, Box, Container, Divider, Image, Modal, Space, Title } from "@mantine/core"
-import { EngineButton, LogoutButton, OptionButton, WorkersButton } from "./inputs/Buttons"
+import { EngineButton, LogoutButton, OptionButton, GroupsButton } from "./inputs/Buttons"
 import { useGlobalStore, useTokenStore } from "@/utils/stores"
 import { useState } from "react"
 import { statusQuery } from "@/utils/queries"
@@ -39,7 +39,7 @@ export const MainLayout = ({ children }: { children: any }) => {
                 {header}
                 <EngineButton onClick={() => setOpenSetup(true)} />
                 <Space w="md" />
-                <WorkersButton onClick={() => setOpenWorkers(true)} />
+                <GroupsButton onClick={() => setOpenWorkers(true)} />
                 <Space w="md" />
                 <OptionButton onClick={() => setOpenOptions(true)} />
                 <Space w="md" />
@@ -98,7 +98,7 @@ export const MainLayout = ({ children }: { children: any }) => {
             <Modal
                 opened={openWorkers}
                 onClose={() => setOpenWorkers(false)}
-                title="Workers Pool 🏭 (Alpha ⚠️)"
+                title="Attack Groups"
                 centered
                 fullScreen
                 closeOnClickOutside={false}
