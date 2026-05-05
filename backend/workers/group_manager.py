@@ -367,13 +367,6 @@ class GroupAttackManager:
     
     async def handle_request(self, request: GroupResponseEvent):
         match request.event:
-            case GroupEventResponseType.SET_RUNNING_STATUS:
-                if not request.data["running"]:
-                    for expl in self.group.exploits:
-                        await set_exploit_stopped(expl.id)
-                self.running = request.data["running"]
-                await self.send_running_status()
-                await self.loop_reset()
             case GroupEventResponseType.ATTACK_ENDED:
                 async with self.client_table_lock:
                     async with self.attack_target_table_lock:
