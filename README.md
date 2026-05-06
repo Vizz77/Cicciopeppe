@@ -146,6 +146,114 @@ xfarm start
 This will start the TUI and replicate the attack to all the teams registered on exploitfarm server.
 if the TUI is heavy for your system, you can use `xfarm -I start`to start the exploit showing only the logs in the output.
 
+---
+
+## Group Attacks
+
+Group attacks allow **multiple machines** to collaborate on executing the same exploit(s), spreading the workload automatically across all connected nodes. This is ideal when a single machine doesn't have enough threads or network bandwidth to attack all teams within a tick.
+
+This feature is was initialy has been modified during time and changed more time, consider it as a beta feature.
+
+### 1. Create a Group
+
+A group is a named attack pool managed by the server. Create one from any machine with the client installed:
+
+```bash
+xfarm group create
+```
+
+You will be prompted for a group name. Alternatively, create one directly from the **Web UI** under the *Attack Groups* section. You can list all existing groups at any time:
+
+```bash
+xfarm group list
+```
+
+This shows each group's name, UUID, and whether a local worker is currently running for it.
+
+---
+
+### 2. Associate Exploits to the Group
+
+Before any node can start attacking, you need to tell the group which exploits it should run. This is done via the **Web UI**:
+
+1. Open the *Attack Groups* tab.
+2. Select the group you created.
+3. Click **Manage Exploits** (visible in the *Assigned Exploits* tab or as an action button).
+4. Search for and check the exploits you want to assign — note that each exploit can only belong to **one group at a time**.
+5. Save.
+
+> **Note:** An exploit needs at least one pushed source version before the group can execute it. The association can be changed at any time while the group is running — added exploits start automatically, and updates will be pulled by the workers.
+
+---
+
+### 3. Push the Exploit Source
+
+Each exploit that the group will execute must have its source code pushed to the server. From **inside the exploit folder**:
+
+```bash
+xfarm exploit push
+```
+
+This uploads the current source code snapshot. Workers will automatically download it on their next attack cycle. You can push updates at any time — running attacks using the old version will be killed and restarted with the new code automatically.
+
+---
+
+### 4. Join the Group from Each Node
+
+On **every machine** that should participate in the attack, run:
+
+```bash
+xfarm group join
+```
+
+An interactive TUI will let you:
+1. Select the group to join.
+2. Choose how many concurrent attack threads to use.
+
+You can also specify these directly:
+
+```bash
+xfarm group join --group <group-uuid> --queue <num-threads>
+```
+
+To run the worker in the background:
+
+```bash
+xfarm group join --d
+```
+
+> The group starts attacking **automatically** as soon as at least one node has joined and at least one exploit with a pushed source is assigned. No manual start/stop is needed.
+
+---
+
+### 5. Update an Exploit
+
+To roll out a new version of an exploit to all nodes while the group is running, simply push again from the exploit folder:
+
+```bash
+xfarm exploit push
+```
+
+The server detects the new source, notifies all connected workers, kills in-flight attacks for that exploit, and immediately starts the new version. **No restart or rejoin is required.**
+
+To add or remove exploits from a running group, use the **Manage Exploits** button in the Web UI — changes take effect instantly.
+
+---
+
+### 6. Monitor & Stop
+
+- The **Web UI** *Attack Groups* tab shows all connected workers, their thread capacity, assigned exploits, and the running status.
+- Each joined node's TUI (when not demonized) shows live logs and connection status, including a warning banner if the server connection is lost.
+- If the server crashes and restarts, **workers reconnect automatically**.
+
+To stop a background worker:
+
+```bash
+xfarm group join --kill --group <group-uuid>
+# Or interactively (shows only groups with a running local worker):
+xfarm group join --kill
+```
+
 xfarm start will by default use `cpu_count*10` thread pool to manage the attacks and apply an execution timeout based on the time available for the attack allowing all teams to be attacked. For problems with the ram usage, is highly recommended to use `zram` on linux to compress the ram to avoid trashing.
 
 If you write the exploit on python you can use also exploitfarm library. Is highly recommended to use `from exploitfarm import *`, this will set the print python function by default to flush=True.
