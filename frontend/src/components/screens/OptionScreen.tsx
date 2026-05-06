@@ -7,29 +7,24 @@ import { AddEditServiceModal } from "../modals/AddEditServiceModal";
 import { useState } from "react";
 import { useSettingsStore } from "@/utils/stores";
 import { notifications } from "@mantine/notifications";
-import { GroupTable } from "../tables/GroupTable";
 
 export const OptionScreen = () => {
 
     const [addNewServiceModalOpen, setAddNewServiceModalOpen] = useState(false)
 
     return <Container>
+
+        <Title order={2} display="flex" style={{ alignItems: "center" }}>
+            <span>Services</span><Box style={{ flexGrow: 1 }} /><AddButton onClick={() => setAddNewServiceModalOpen(true)} />
+        </Title>
+        <Space h="md" />
+        <ServiceTable />
+        <Space h="md" />
         <Title order={2}>
             Exploits
         </Title>
         <Space h="md" />
         <ExploitTable />
-        <Title order={2}>
-            Attack Groups
-        </Title>
-        <Space h="md" />
-        <GroupTable />
-        <Space h="md" />
-        <Title order={2} display="flex" style={{alignItems: "center"}}>
-            <span>Services</span><Box style={{flexGrow:1}} /><AddButton onClick={()=>setAddNewServiceModalOpen(true)} />
-        </Title>
-        <Space h="md" />
-        <ServiceTable />
         <Space h="md" />
         <Title order={2}>
             Clients
@@ -38,7 +33,7 @@ export const OptionScreen = () => {
         <ClientTable />
         <Space h="md" />
         <ViewOptionEditor />
-        <AddEditServiceModal open={addNewServiceModalOpen} onClose={()=>setAddNewServiceModalOpen(false)} />
+        <AddEditServiceModal open={addNewServiceModalOpen} onClose={() => setAddNewServiceModalOpen(false)} />
     </Container>
 }
 
@@ -56,13 +51,13 @@ export const ViewOptionEditor = () => {
             defaultValue={tablePageSize}
             labelAlwaysOn
             marks={[
-                { value: 5, label:"5" },
-                { value: 30, label:"30" },
-                { value: 60, label:"60" },
-                { value: 100, label:"100" },
-                { value: 150, label:"150" },
-                { value: 200, label:"200" },
-                { value: 300, label:"300" },
+                { value: 5, label: "5" },
+                { value: 30, label: "30" },
+                { value: 60, label: "60" },
+                { value: 100, label: "100" },
+                { value: 150, label: "150" },
+                { value: 200, label: "200" },
+                { value: 300, label: "300" },
             ]}
             onChangeEnd={(value) => {
                 setTablePageSize(value)

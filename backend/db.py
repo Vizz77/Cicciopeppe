@@ -4,7 +4,7 @@ import asyncio
 import sqla
 import time
 import sqlalchemy.exc
-from typing import Dict, Annotated, List
+from typing import Dict, Annotated, List, Optional
 from typing import Callable
 from uuid import uuid4
 from env import RESET_DB_DANGEROUS
@@ -47,7 +47,6 @@ class redis_channels:
     config = "config"
     password_change = "password_change"
     error_warning = "error_warning"
-    workers = "workers"
     
 REDIS_CHANNEL_PUBLISH_LIST = [
     redis_channels.client,
@@ -60,8 +59,7 @@ REDIS_CHANNEL_PUBLISH_LIST = [
     redis_channels.submitter,
     redis_channels.stats,
     redis_channels.config,
-    redis_channels.error_warning,
-    redis_channels.workers
+    redis_channels.error_warning
 ]
 
 class redis_keys:
@@ -93,12 +91,11 @@ class Client(SQLModel, table=True):
     exploits_created:       List["Exploit"]         = Relationship(back_populates="created_by")
     pushed_exploit_sources: List["ExploitSource"]   = Relationship(back_populates="pushed_by")
     attacks_executions:     List["AttackExecution"] = Relationship(back_populates="executed_by")
-    created_groups:         List["AttackGroup"]     = Relationship(back_populates="created_by")
 
 class Service(SQLModel, table=True):
     __tablename__ = "services"
     
-    id:         ServiceID          = Field(primary_key=True, default=uuid4)
+    id:         ServiceID          = Field(primary_key=True, default_factory=uuid4)
     name:       str
     created_at: DateTime           = Field(sa_column=datetime_now_sql())
     
@@ -110,16 +107,16 @@ class Exploit(SQLModel, table=True):
     id:                 ExploitID               = Field(primary_key=True)
     name:               str
     language:           Language                = Field(default=Language.other)
-    run_on_workers: bool                        = Field(default=False)
     created_at:         DateTime                = Field(sa_column=datetime_now_sql())
     created_by_id:      ClientID | None         = Field(foreign_key="clients.id", ondelete="SET NULL")
     created_by:         Client | None           = Relationship(back_populates="exploits_created")
     service_id:         ServiceID | None        = Field(foreign_key="services.id", ondelete="SET NULL")
     service:            Service | None          = Relationship(back_populates="exploits")
-    
-    groups:             List["AttackGroup"]     = Relationship(back_populates="exploit")
+    group_id:           AttackGroupID | None    = Field(default=None, foreign_key="attack_groups.id", ondelete="SET NULL")
+    group:              Optional["AttackGroup"] = Relationship(back_populates="exploits")
     sources:            List["ExploitSource"]   = Relationship(back_populates="exploit")
     executions:         List["AttackExecution"] = Relationship(back_populates="exploit")
+
 
 class Team(SQLModel, table=True):
     __tablename__ = "teams"
@@ -136,7 +133,7 @@ class Team(SQLModel, table=True):
 class ExploitSource(SQLModel, table=True):
     __tablename__ = "exploit_sources"
     
-    id:             ExploitSourceID             = Field(primary_key=True, default=uuid4)
+    id:             ExploitSourceID             = Field(primary_key=True, default_factory=uuid4)
     hash:           str
     message:        str | None
     pushed_at:      DateTime                    = Field(sa_column=datetime_now_sql())
@@ -148,22 +145,16 @@ class ExploitSource(SQLModel, table=True):
     exploit_id:     ExploitID                   = Field(foreign_key="exploits.id", ondelete="CASCADE")
     exploit:        "Exploit"                   = Relationship(back_populates="sources")
     
-    executed_by_group: List["AttackGroup"]       = Relationship(back_populates="commit")
     executions: List["AttackExecution"]         = Relationship(back_populates="exploit_source")
 
 class AttackGroup(SQLModel, table=True):
     __tablename__ = "attack_groups"
     
-    id:             AttackGroupID               = Field(primary_key=True, default=uuid4)
+    id:             AttackGroupID               = Field(primary_key=True, default_factory=uuid4)
     name:           str
     created_at:     DateTime                    = Field(sa_column=datetime_now_sql())
-    created_by_id:  ClientID | None             = Field(foreign_key="clients.id", ondelete="SET NULL")
-    created_by:     Client | None               = Relationship(back_populates="created_groups")
-    exploit_id:     ExploitID                   = Field(foreign_key="exploits.id", ondelete="CASCADE")
-    exploit:        Exploit                     = Relationship(back_populates="groups")
-    commit_id:     ExploitSourceID | None      = Field(foreign_key="exploit_sources.id", ondelete="SET NULL")
-    commit:         ExploitSource | None        = Relationship(back_populates="executed_by_group")
     
+    exploits:       List[Exploit]               = Relationship(back_populates="group")
     executions:     List["AttackExecution"]     = Relationship(back_populates="executed_by_group")
 
 class AttackExecution(SQLModel, table=True):
@@ -182,7 +173,6 @@ class AttackExecution(SQLModel, table=True):
     executed_by_id:         ClientID | None            = Field(foreign_key="clients.id", ondelete="SET NULL")
     executed_by:            Client | None              = Relationship(back_populates="attacks_executions")
     executed_by_group_id:   AttackGroupID | None       = Field(foreign_key="attack_groups.id", ondelete="SET NULL")
-    executed_by_workers:    bool                       = Field(default=False)
     executed_by_group:      AttackGroup | None         = Relationship(back_populates="executions")
     exploit_source_id:      ExploitSourceID | None     = Field(foreign_key="exploit_sources.id", ondelete="SET NULL")
     exploit_source:         ExploitSource | None       = Relationship(back_populates="executions")
@@ -271,6 +261,14 @@ async def db_init_script() -> None:
         )).one_or_none()
         if not manual_client:
             session.add(Client(id=MANUAL_CLIENT_ID, name="Manual client"))
+            
+        import uuid
+        default_group_id = uuid.UUID(int=0)
+        default_group = (await session.scalars(
+            sqla.select(AttackGroup).where(AttackGroup.id == default_group_id)
+        )).one_or_none()
+        if not default_group:
+            session.add(AttackGroup(id=default_group_id, name="Default Group"))
 
 async def init_db():
     await connect_db()

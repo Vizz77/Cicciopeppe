@@ -14,7 +14,7 @@ export type Exploit = components["schemas"]["ExploitDTO"]
 export type AttackGroup = components["schemas"]["GroupDTO"]
 export type Language = components["schemas"]["Language"]
 export type ExploitSource = components["schemas"]["ExploitSourceDTO"]
-export type WorkersGroupDTO = components["schemas"]["WorkersGroupDTO"]
+
 export const LanguageList = ["python", "java", "javascript", "typescript", "c#", "c++", "php", "r", "kotlin", "go", "ruby", "rust", "lua", "dart", "perl", "haskell", "other"]
 export const KargsSubmitterList = ["int", "str", "float", "bool", "any"]
 export type KargsSubmitter = "int" | "str" | "float" | "bool" | "any"

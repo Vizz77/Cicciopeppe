@@ -30,8 +30,7 @@ export const SOCKET_IO_CHANNELS = [
     "submitter",
     "stats",
     "config",
-    "error_warning",
-    "workers"
+    "error_warning"
 ]
 
 export const DEBOUNCED_SOCKET_IO_CHANNELS = [
@@ -41,10 +40,6 @@ export const DEBOUNCED_SOCKET_IO_CHANNELS = [
 
 export const sockIoChannelToQueryKeys = (channel: string): string[][] => {
     switch (channel) {
-        case "workers":
-            return [
-                ["workers"]
-            ]
         case "client":
             return [
                 ["clients"]

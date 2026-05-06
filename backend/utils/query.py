@@ -2,7 +2,7 @@ from db import Exploit, AttackExecution, redis_conn, redis_keys
 from db import AttackGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.config import Configuration, SetupStatus
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 from utils import datetime_now
 import pickle
 import traceback
@@ -86,6 +86,7 @@ async def get_groups_with_latest_attack(db: AsyncSession) -> List[sqla.Row[Tuple
                     .limit(1)
             ).correlate(AttackGroup).scalar_subquery()
         )
+        .options(selectinload(AttackGroup.exploits))
     )
     return (await db.execute(stmt)).all()
 

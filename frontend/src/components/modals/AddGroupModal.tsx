@@ -1,54 +1,47 @@
-import { editGroup } from "@/utils/queries"
-import { AttackGroup } from "@/utils/types"
+import { addGroup } from "@/utils/queries"
 import { Button, Group, Modal, TextInput } from "@mantine/core"
 import { useForm } from "@mantine/form"
 import { notifications } from "@mantine/notifications"
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 
-
-export const EditGroupModal = ({ onClose, group }: { onClose: () => void, group?: AttackGroup }) => {
+export const AddGroupModal = ({ opened, onClose }: { opened: boolean, onClose: () => void }) => {
     const form = useForm({
         initialValues: {
-            name: group?.name ?? "",
+            name: ""
         },
         validate: {
-            name: (value) => value == "" ? "Name is required" : undefined
+            name: (value) => value === "" ? "Name is required" : undefined
         }
     })
 
     const queryClient = useQueryClient()
 
     useEffect(() => {
-        form.setInitialValues({
-            name: group?.name ?? ""
-        })
-        form.reset()
-    }, [group])
+        if (opened) {
+            form.reset()
+        }
+    }, [opened])
 
     return <Modal
-        opened={group != null}
+        opened={opened}
         onClose={onClose}
-        title="Edit group"
+        title="Create new attack group"
         size="xl"
         centered
     >
         <form onSubmit={form.onSubmit((data) => {
-            if (group == null) {
-                onClose()
-                return
-            }
-            editGroup(group.id, data)
+            addGroup({ ...data, exploits: [] })
                 .then(() => {
                     notifications.show({
-                        title: `${group.name} Group edited!`,
-                        message: "Group has been edited successfully!",
+                        title: `Group created!`,
+                        message: "Attack group has been created successfully!",
                         color: "green",
                     })
                     queryClient.invalidateQueries({ queryKey: ["groups"] })
                 }).catch((err) => {
                     notifications.show({
-                        title: "Error during editing!",
+                        title: "Error creating group!",
                         message: err.message ?? err ?? "Unknown error",
                         color: "red",
                     })
@@ -61,10 +54,9 @@ export const EditGroupModal = ({ onClose, group }: { onClose: () => void, group?
                 {...form.getInputProps("name")}
             />
             <Group mt="xl" justify="flex-end">
-                <Button onClick={form.reset} color="gray" disabled={!form.isDirty()}>Reset</Button>
-                <Button type="submit" color="blue" disabled={!form.isValid() || !form.isDirty()}>Edit</Button>
+                <Button onClick={onClose} color="gray">Cancel</Button>
+                <Button type="submit" color="green" disabled={!form.isValid()}>Create</Button>
             </Group>
         </form>
-
     </Modal>
 }

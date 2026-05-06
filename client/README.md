@@ -154,33 +154,6 @@ xfarm start ./my_exploit --pool-size 20 --test
 
 ---
 
-#### **Status**
-
-Retrieve the status of the server or specific components:
-
-```bash
-xfarm status [WHAT]
-```
-
-**Options**:
-
-- `WHAT`: Specify the status type (default: `status`). Available options include:
-  - `status`: General server status.
-  - `submitters`: Submission system details.
-  - `services`: Active services.
-  - `exploits`: Exploit statuses.
-  - `flags`: Flag submission statistics.
-  - `teams`: Team information.
-  - `clients`: Client configuration details.
-
-**Example**:
-
-```bash
-xfarm status exploits
-```
-
----
-
 ### **Configuration Commands**
 
 #### **Edit Configuration**
@@ -319,8 +292,7 @@ xfarm group create [OPTIONS]
 **Options**:
 
 - `--name`: Group name.
-- `--current-commit`: Use the current exploit commit.
-- `--submit-pool-timeout`: Timeout for submission pooling.
+
 
 #### **Join Attack Group**
 
@@ -334,7 +306,20 @@ xfarm group join [OPTIONS]
 
 - `--group`: Group ID.
 - `--queue`: Queue number for the group.
-- `--trigger-start`: Start the attack after joining.
+- `--submit-pool-timeout`: Timeout for submission pooling.
+- `--demonized` or `-d`: Join the group in a demonized process.
+- `--kill`: Kill a running worker of the indicated group.
+- `--log-file`: Path to the log file
+
+#### **List Attack Group**
+
+List all available attack groups:
+
+```bash
+xfarm group list
+```
+
+Shows a table with all existing groups, their IDs, and if there is a worker running for that group.
 
 ---
 

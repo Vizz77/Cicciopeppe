@@ -184,23 +184,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/exploits/{exploit_id}/workers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Exploit Toggle Workers */
-        put: operations["exploit_toggle_workers_api_exploits__exploit_id__workers_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/exploits/{exploit_id}/submit": {
         parameters: {
             query?: never;
@@ -479,26 +462,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/groups/workers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Workers Pool Status
-         * @description Return live status of the workers pool (not a DB-backed group).
-         */
-        get: operations["workers_pool_status_api_groups_workers_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/groups/{group_id}": {
         parameters: {
             query?: never;
@@ -507,8 +470,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Client Edit */
-        put: operations["client_edit_api_groups__group_id__put"];
+        /** Group Edit */
+        put: operations["group_edit_api_groups__group_id__put"];
         post?: never;
         /** Delete Group */
         delete: operations["delete_group_api_groups__group_id__delete"];
@@ -601,15 +564,8 @@ export interface components {
         AddGroupForm: {
             /** Name */
             name: string;
-            /** Exploit */
-            exploit: string;
-            /** Created By */
-            created_by: string;
-            /**
-             * Commit
-             * @default latest
-             */
-            commit: string | "latest";
+            /** Exploits */
+            exploits: string[];
         };
         /** AttackExecutionDTO */
         AttackExecutionDTO: {
@@ -814,7 +770,9 @@ export interface components {
         /** EditGroupForm */
         EditGroupForm: {
             /** Name */
-            name: string;
+            name?: string | null;
+            /** Exploits */
+            exploits?: string[] | null;
         };
         /** ExploitAddForm */
         ExploitAddForm: {
@@ -827,11 +785,6 @@ export interface components {
             name: string;
             /** @default other */
             language: components["schemas"]["Language"];
-            /**
-             * Run On Workers
-             * @default false
-             */
-            run_on_workers: boolean;
             /**
              * Service
              * Format: uuid
@@ -851,11 +804,6 @@ export interface components {
             name: string;
             language: components["schemas"]["Language"];
             status?: components["schemas"]["ExploitStatus"] | null;
-            /**
-             * Run On Workers
-             * @default false
-             */
-            run_on_workers: boolean;
             /** Last Update */
             last_update?: string | null;
             /**
@@ -873,7 +821,7 @@ export interface components {
             /** Last Execution By */
             last_execution_by?: string | null;
             /** Last Execution Group By */
-            last_execution_group_by?: string | "workers" | null;
+            last_execution_group_by?: string | null;
             /** Last Source */
             last_source?: string | null;
         };
@@ -882,8 +830,6 @@ export interface components {
             /** Name */
             name?: string | null;
             language?: components["schemas"]["Language"] | null;
-            /** Run On Workers */
-            run_on_workers?: boolean | null;
             /** Service */
             service?: string | null;
         };
@@ -1020,29 +966,29 @@ export interface components {
         FlagStatus: "ok" | "wait" | "timeout" | "invalid";
         /** GroupDTO */
         GroupDTO: {
-            /** Id */
-            id: string | "workers";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Name */
             name: string;
             /**
              * Members
              * @default []
              */
-            members: string[];
+            members: components["schemas"]["WorkerClientInfoDTO"][];
             /**
-             * Exploit
-             * Format: uuid
+             * Exploits
+             * @default []
              */
-            exploit: string;
+            exploits: string[];
             /** Last Attack At */
             last_attack_at?: string | null;
             /** @default inactive */
             status: components["schemas"]["GroupStatus"];
-            /**
-             * Commit
-             * @default latest
-             */
-            commit: string | "latest";
+            /** Timeout */
+            timeout?: number | null;
         };
         /**
          * GroupStatus
@@ -1449,35 +1395,6 @@ export interface components {
             sid: string;
             /** Queue Size */
             queue_size: number;
-        };
-        /** WorkersGroupDTO */
-        WorkersGroupDTO: {
-            /**
-             * Id
-             * @constant
-             */
-            id: "workers";
-            /**
-             * Name
-             * @default Workers
-             */
-            name: string;
-            /**
-             * Members
-             * @default []
-             */
-            members: string[];
-            /**
-             * Clients
-             * @default []
-             */
-            clients: components["schemas"]["WorkerClientInfoDTO"][];
-            /** Exploits */
-            exploits: string[];
-            /** Timeout */
-            timeout?: number | null;
-            /** @default inactive */
-            status: components["schemas"]["GroupStatus"];
         };
     };
     responses: never;
@@ -1947,39 +1864,6 @@ export interface operations {
     exploit_delete_api_exploits__exploit_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
-            path: {
-                exploit_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MessageResponse_ExploitDTO_"];
-                };
-            };
-            /** @description Validation error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MessageResponse_Any_"];
-                };
-            };
-        };
-    };
-    exploit_toggle_workers_api_exploits__exploit_id__workers_put: {
-        parameters: {
-            query: {
-                status: boolean;
-            };
             header?: never;
             path: {
                 exploit_id: string;
@@ -2742,36 +2626,7 @@ export interface operations {
             };
         };
     };
-    workers_pool_status_api_groups_workers_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorkersGroupDTO"];
-                };
-            };
-            /** @description Validation error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MessageResponse_Any_"];
-                };
-            };
-        };
-    };
-    client_edit_api_groups__group_id__put: {
+    group_edit_api_groups__group_id__put: {
         parameters: {
             query?: never;
             header?: never;
