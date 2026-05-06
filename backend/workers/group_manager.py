@@ -467,13 +467,24 @@ class GroupAttackManager:
         return self.timeout, self.deadline, self.running
     
     async def __kill_and_reset_exploit(self, exploit_id: str):
-        # We don't have a specific kill exploit command in group right now but we can clear targets
+        # Send the kill command for this specific exploit to all clients in the group
+        await sio_server.send(
+            json_like(GroupRequestEvent(
+                event=GroupEventRequestType.ATTACK_KILL_EXPLOIT,
+                group_id=self.group_id,
+                data={ "exploit_id": exploit_id }
+            )),
+            room=f"group:{self.group_id}:room"
+        )
+
+        # Clear targets and free up the worker queues locally
         async with self.attack_target_table_lock:
             if exploit_id in self.attack_target_table:
                 for target in self.attack_target_table[exploit_id].values():
                     if target.assigned_to and target.assigned_to in self.client_table:
                         self.client_table[target.assigned_to].used_queues = max(0, self.client_table[target.assigned_to].used_queues - 1)
                 del self.attack_target_table[exploit_id]
+                
         await self.generate_attack_targets(exploit_id)
 
     async def handle_commit_change(self):
@@ -481,10 +492,18 @@ class GroupAttackManager:
             exploit_id = str(expl.id)
             latest_source = await get_latest_exploit_source(exploit_id)
             new_hash = latest_source.hash if latest_source else None
+            
             if new_hash != self.exploits_info.get(exploit_id):
                 self.exploits_info[exploit_id] = new_hash
                 self.source_pull_required.add(exploit_id)
+                
+                # 1. Force clients to clear the cache for this exploit immediately
+                await self.trigger_exploit_pull()
+                
+                # 2. Kill running instances of the old commit and reset targets
                 await self.__kill_and_reset_exploit(exploit_id)
+                
+                # 3. Recalculate timeouts and trigger loop to instantly assign the new commit
                 await self.recalculate_timeout(trigger_skio_update=True)
                 self.trigger_next_loop()
     
@@ -691,7 +710,8 @@ async def generate_config_update_tasks():
                     await update_teams_info()
     g.task_list.extend([
         asyncio.create_task(listener_config_update()),
-        asyncio.create_task(listener_teams_update())
+        asyncio.create_task(listener_teams_update()),
+        asyncio.create_task(exploit_source_watcher())
     ])
 
 async def tasks_init():
