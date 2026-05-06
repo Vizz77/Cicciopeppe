@@ -163,7 +163,67 @@ class GroupAttackManager:
                     data=TeamDTO.model_dump(ele, mode="python", exclude_unset=False)
                 )
     
+    async def handle_group_update(self, new_group: AttackGroup):
+        old_exploit_ids = {str(e.id) for e in self.group.exploits}
+        new_exploit_ids = {str(e.id) for e in new_group.exploits}
+        
+        added_exploits = new_exploit_ids - old_exploit_ids
+        removed_exploits = old_exploit_ids - new_exploit_ids
+        
+        self.group = new_group
+        
+        # 1. Clean up deleted exploits and free up worker queues
+        if removed_exploits:
+            async with self.attack_target_table_lock:
+                for exp_id in removed_exploits:
+                    if exp_id in self.attack_target_table:
+                        for target in self.attack_target_table[exp_id].values():
+                            if target.assigned_to and target.assigned_to in self.client_table:
+                                client = self.client_table[target.assigned_to]
+                                client.used_queues = max(0, client.used_queues - 1)
+                        del self.attack_target_table[exp_id]
+                    
+                    if exp_id in self.exploits_info:
+                        del self.exploits_info[exp_id]
 
+        # 2. Add new exploits and schedule them for an immediate pull
+        if added_exploits:
+            for exp_id in added_exploits:
+                latest_source = await get_latest_exploit_source(exp_id)
+                self.exploits_info[exp_id] = latest_source.hash if latest_source else None
+                if self.exploits_info[exp_id] is not None:
+                    self.source_pull_required.add(exp_id)
+            
+            async with self.attack_target_table_lock:
+                for exp_id in added_exploits:
+                    if self.exploits_info.get(exp_id) is not None:
+                        self.attack_target_table[exp_id] = {}
+                        for ele in g.teams:
+                            self.attack_target_table[exp_id][ele.host] = AttackTargetStatus(
+                                target=ele.host,
+                                exploit_id=exp_id,
+                                commit_id=self.exploits_info.get(exp_id),
+                                data=TeamDTO.model_dump(ele, mode="python", exclude_unset=False)
+                            )
+
+        # 3. Handle added/removed exploits seamlessly
+        if added_exploits or removed_exploits:
+            if added_exploits:
+                # Force clients to pull the new exploit code immediately
+                await self.trigger_exploit_pull()
+            
+            # Recalculate timeout because the total number of targets has changed
+            await self.recalculate_timeout(trigger_skio_update=True)
+            
+            # Trigger the loop to process the new unassigned targets
+            self.trigger_next_loop()
+        
+        # 4. Handle auto-start if workers are connected and new exploits wake the group up
+        if not self.running and len(self.group.exploits) > 0 and len(self.client_table) > 0:
+            logging.info(f"[GroupTask:{self.group_id}] Auto-starting group! exploits={[str(e.id) for e in self.group.exploits]}")
+            self.running = True
+            await self.send_running_status()
+            await self.loop_reset() # Safe to call here since nothing is currently running
     
     def time_to_wait_for_next_timeout(self) -> int:
         return max(0, self.TIMEOUT_SEND_INTERVAL - (time.time() - self.last_timeout_sent))
@@ -506,14 +566,11 @@ async def group_changes_listener():
                                     AttackGroup.id == uuid.UUID(group_id)
                                 ).options(selectinload(AttackGroup.exploits))
                                 group = await db.scalar(stmt)
+                                
+                                # Use the new differential update handler
                                 if group:
-                                    manager.group = group
-                                    await manager.handle_teams_changed()
-                                    # Auto-start if workers are connected and exploits are now assigned
-                                    if not manager.running and len(manager.group.exploits) > 0 and len(manager.client_table) > 0:
-                                        manager.running = True
-                                        await manager.send_running_status()
-                                        await manager.loop_reset()
+                                    await manager.handle_group_update(group)
+                                    
                 elif message.startswith("add:"):
                     group_id = message.split(":")[1]
                     # Pre-create the manager so it's ready when workers join
